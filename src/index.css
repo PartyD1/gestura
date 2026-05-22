@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --color-gestura-bg: #0f0f1a;
+  --color-gestura-accent: #7c3aed;
+  --color-gestura-accent-muted: #5b21b6;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-gestura-bg);
+  color: #f4f4f5;
+  overflow: hidden;
+}
+
+@keyframes gestura-gradient {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.gestura-bg {
+  background: linear-gradient(
+    135deg,
+    #0f0f1a 0%,
+    #141428 35%,
+    #1a1033 70%,
+    #0f0f1a 100%
+  );
+  background-size: 200% 200%;
+  animation: gestura-gradient 18s ease infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.gestura-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
