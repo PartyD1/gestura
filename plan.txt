@@ -1,0 +1,354 @@
+================================================================
+GESTURA — PROJECT PLAN
+================================================================
+For use with Cursor / Codex as persistent project context.
+Always refer to this document before generating or modifying code.
+================================================================
+
+
+----------------------------------------------------------------
+WHAT WE ARE BUILDING
+----------------------------------------------------------------
+Gestura is a React + Vite web application that allows motor-impaired
+users to control a music player entirely through hand gestures detected
+via their webcam. No keyboard. No mouse. No API keys. No backend.
+
+The app runs 100% in the browser using MediaPipe Hands for real-time
+hand landmark detection. A small webcam feed sits in the corner of
+the screen. As the user makes gestures, Gestura classifies them from
+the 21 raw hand landmark coordinates (pure geometry — no ML training
+required) and maps them to music player actions: play, pause, next
+track, previous track, volume up, volume down.
+
+This is an assistive technology project built for BananaBots, a
+robotics and assistive health technology club. The target user is
+someone with motor impairments (e.g., ALS, cerebral palsy, muscular
+dystrophy, spinal cord injuries) who cannot comfortably or reliably
+use a keyboard or mouse but still wants to enjoy music independently.
+
+The emotional core: a motor-impaired person should be able to sit in
+front of their laptop and control their music with a wave of their hand,
+the same way anyone else controls a Spotify playlist.
+
+
+----------------------------------------------------------------
+APP NAME
+----------------------------------------------------------------
+Gestura
+
+
+----------------------------------------------------------------
+TECH STACK
+----------------------------------------------------------------
+- Framework:        React 18 + Vite
+- Language:         TypeScript (strict mode)
+- Styling:          Tailwind CSS
+- Hand Detection:   @mediapipe/hands (loaded via CDN in index.html)
+- Camera Access:    @mediapipe/camera_utils (loaded via CDN)
+- Drawing Utils:    @mediapipe/drawing_utils (loaded via CDN, optional)
+- Audio Playback:   HTML5 <audio> element via React ref (no library)
+- State:            React useState + useRef + custom hooks only
+- No backend. No API keys. No external services. Runs 100% client-side.
+
+
+----------------------------------------------------------------
+MEDIAPIPE LOADING STRATEGY
+----------------------------------------------------------------
+MediaPipe Hands must be loaded via CDN script tags in index.html,
+NOT as npm packages. This avoids WASM import issues with Vite.
+
+Add these to the <head> of index.html BEFORE the React bundle:
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+Access them in TypeScript via window.Hands, window.Camera, etc.
+Declare them as global types in src/types/mediapipe.d.ts.
+
+
+----------------------------------------------------------------
+FOLDER STRUCTURE
+----------------------------------------------------------------
+gestura/
+├── index.html                          ← MediaPipe CDN scripts go here
+├── vite.config.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── package.json
+│
+└── src/
+    ├── main.tsx
+    ├── App.tsx                         ← Root layout, wires all components together
+    │
+    ├── types/
+    │   └── mediapipe.d.ts              ← Global type declarations for window.Hands etc.
+    │
+    ├── data/
+    │   └── tracks.ts                   ← Hardcoded tracklist (title, artist, art URL, audio URL)
+    │
+    ├── hooks/
+    │   ├── useMediaPipe.ts             ← Initializes MediaPipe Hands, starts webcam, emits landmarks
+    │   ├── useGestures.ts              ← Converts 21 landmarks → gesture string
+    │   └── usePlayer.ts               ← All audio state: play/pause, track index, volume, progress
+    │
+    └── components/
+        ├── MusicPlayer.tsx             ← Main player UI: album art, track info, controls, progress bar
+        ├── GestureCamera.tsx           ← Small webcam preview in corner + optional landmark canvas overlay
+        └── GestureBadge.tsx            ← Animated toast that briefly shows detected gesture label
+
+
+----------------------------------------------------------------
+DATA: TRACKS
+----------------------------------------------------------------
+File: src/data/tracks.ts
+
+Export a typed array of Track objects. Use royalty-free audio from
+sources like pixabay.com/music or freemusicarchive.org.
+Use album art from unsplash.com (royalty-free) or placeholder.com.
+
+Interface:
+  interface Track {
+    id: number;
+    title: string;
+    artist: string;
+    albumArt: string;    // URL to image
+    audioSrc: string;    // URL to .mp3 file
+  }
+
+Provide at least 4-5 tracks so gesture-based track switching is
+meaningfully demonstrable in the submission video.
+
+
+----------------------------------------------------------------
+HOOKS
+----------------------------------------------------------------
+
+--- useMediaPipe.ts ---
+Purpose: Initialize MediaPipe Hands and start the webcam stream.
+
+- Creates a ref for the <video> element (passed in from GestureCamera)
+- Instantiates window.Hands with config:
+    maxNumHands: 1
+    modelComplexity: 1
+    minDetectionConfidence: 0.75
+    minTrackingConfidence: 0.75
+- Sets onResults callback that receives the landmark array
+- Starts window.Camera pointed at the video ref
+- Returns: { landmarks } where landmarks is a NormalizedLandmarkList or null
+
+--- useGestures.ts ---
+Purpose: Convert raw 21 landmark coordinates into a named gesture.
+
+Input: landmarks (NormalizedLandmarkList | null)
+Output: gesture (string | null) — one of:
+  "PLAY_PAUSE" | "NEXT" | "PREV" | "VOL_UP" | "VOL_DOWN" | null
+
+Landmark indices reference (MediaPipe Hands):
+  0  = WRIST
+  4  = THUMB_TIP
+  8  = INDEX_FINGER_TIP
+  6  = INDEX_FINGER_PIP (middle joint)
+  12 = MIDDLE_FINGER_TIP
+  10 = MIDDLE_FINGER_PIP
+  16 = RING_FINGER_TIP
+  14 = RING_FINGER_PIP
+  20 = PINKY_TIP
+  18 = PINKY_PIP
+
+Gesture classification rules (pure geometry):
+
+  Helper — isFingerExtended(tip, pip):
+    Returns true if tip.y < pip.y (tip is higher than pip on screen,
+    meaning finger is pointing up). Y increases downward in MediaPipe.
+
+  OPEN_PALM → PLAY_PAUSE:
+    All 5 fingers extended. Check all five tip/pip pairs.
+
+  INDEX_POINT_RIGHT → NEXT:
+    Only index finger extended. Index tip x > wrist x by threshold.
+    (tip is to the right of the wrist)
+
+  INDEX_POINT_LEFT → PREV:
+    Only index finger extended. Index tip x < wrist x by threshold.
+    (tip is to the left of the wrist)
+
+  THUMBS_UP → VOL_UP:
+    Thumb tip y significantly above wrist y. All other fingers NOT extended.
+    (thumb pointing up, fist closed)
+
+  THUMBS_DOWN → VOL_DOWN:
+    Thumb tip y significantly below wrist y. All other fingers NOT extended.
+    (thumb pointing down, fist closed)
+
+Important — debouncing:
+  Use a useRef timestamp to track when the last gesture fired.
+  Only emit a new gesture if at least 1200ms has passed since the last one.
+  This prevents a single gesture from triggering 30+ times per second.
+
+--- usePlayer.ts ---
+Purpose: Manage all audio playback state.
+
+State:
+  - tracks: Track[]              (from data/tracks.ts)
+  - currentIndex: number
+  - isPlaying: boolean
+  - volume: number               (0 to 1, default 0.7)
+  - progress: number             (0 to 1, updated via timeupdate)
+  - duration: number             (in seconds)
+
+Audio ref: useRef<HTMLAudioElement>
+
+Functions to expose:
+  - togglePlay()
+  - nextTrack()
+  - prevTrack()
+  - setVolume(v: number)
+  - seek(fraction: number)       (for clicking the progress bar)
+  - handleGesture(gesture: string)   ← called from App.tsx when a gesture fires
+
+handleGesture maps:
+  "PLAY_PAUSE" → togglePlay()
+  "NEXT"       → nextTrack()
+  "PREV"       → prevTrack()
+  "VOL_UP"     → setVolume(Math.min(1, volume + 0.1))
+  "VOL_DOWN"   → setVolume(Math.max(0, volume - 0.1))
+
+
+----------------------------------------------------------------
+COMPONENTS
+----------------------------------------------------------------
+
+--- MusicPlayer.tsx ---
+The main UI panel, centered on screen.
+
+Sections:
+  1. Album art — large square image with rounded corners and shadow
+  2. Track info — title (large) and artist (muted, smaller)
+  3. Progress bar — clickable, shows current time / duration
+  4. Control buttons — Prev | Play/Pause | Next (accessible, ARIA labeled)
+  5. Volume slider — horizontal input[type=range]
+
+Props: receive all state and handlers from usePlayer hook (passed down from App).
+This component does NOT manage audio state itself.
+
+Accessibility requirements (mandatory):
+  - All buttons must have aria-label
+  - Progress bar must have role="progressbar" with aria-valuenow
+  - Volume slider must have aria-label="Volume"
+
+--- GestureCamera.tsx ---
+Small webcam preview fixed to bottom-right corner of screen.
+
+Elements:
+  - <video> ref passed to useMediaPipe
+  - <canvas> overlaid on video (optional: draw landmark dots for visual feedback)
+  - A small label at top: "Gestura Active" with a green pulsing dot
+
+Styling: fixed position, bottom-right, ~220px wide, rounded, subtle border.
+Should feel like a HUD overlay, not a primary UI element.
+
+Props: videoRef (from useMediaPipe), landmarks (optional for drawing)
+
+--- GestureBadge.tsx ---
+Animated toast notification that appears briefly when a gesture is detected.
+
+Behavior:
+  - Appears in top-center of screen
+  - Shows an icon + gesture label, e.g.: "✋ Play / Pause" or "👉 Next Track"
+  - Fades out after ~1.5 seconds
+  - Uses CSS transition (opacity + translateY) for enter/exit animation
+
+Props: gesture (string | null)
+
+Gesture label map:
+  "PLAY_PAUSE" → "✋  Play / Pause"
+  "NEXT"       → "👉  Next Track"
+  "PREV"       → "👈  Previous Track"
+  "VOL_UP"     → "👍  Volume Up"
+  "VOL_DOWN"   → "👎  Volume Down"
+
+Accessibility: the badge div must have aria-live="polite" and aria-atomic="true"
+so screen readers announce tone changes automatically.
+
+
+----------------------------------------------------------------
+APP.TSX — WIRING IT ALL TOGETHER
+----------------------------------------------------------------
+App.tsx is the single orchestration layer.
+
+Responsibilities:
+  1. Call usePlayer() → get audio state + handlers
+  2. Call useMediaPipe(videoRef) → get landmarks
+  3. Call useGestures(landmarks) → get gesture string
+  4. useEffect: when gesture changes and is non-null → call handleGesture(gesture)
+  5. Render:
+       <GestureBadge gesture={gesture} />
+       <MusicPlayer ...playerState ...playerHandlers />
+       <GestureCamera videoRef={videoRef} />
+
+
+----------------------------------------------------------------
+DESIGN DIRECTION
+----------------------------------------------------------------
+Dark theme. Deep navy/charcoal background (#0f0f1a).
+Accent color: electric violet (#7c3aed) or teal (#0d9488).
+Album art is the hero visual — large, prominent, slightly glowing shadow.
+Typography: clean, readable. Suggest "DM Sans" or "Syne" from Google Fonts.
+The GestureCamera overlay should feel like a sleek HUD, not an afterthought.
+Subtle animated background (very faint moving gradient or noise texture).
+Player controls use icon buttons (lucide-react for icons).
+
+
+----------------------------------------------------------------
+3-DAY BUILD ORDER
+----------------------------------------------------------------
+
+DAY 1 — Foundation
+  [ ] Scaffold Vite + React + TypeScript + Tailwind
+  [ ] Add MediaPipe CDN scripts to index.html
+  [ ] Write src/types/mediapipe.d.ts
+  [ ] Build useMediaPipe.ts — get webcam running, log landmarks to console
+  [ ] Build GestureCamera.tsx — show webcam feed in corner
+  [ ] Hardcode 1 track in tracks.ts and build bare-bones MusicPlayer.tsx
+  [ ] Confirm MediaPipe is producing landmark data in browser console
+
+DAY 2 — Core Features
+  [ ] Build useGestures.ts — implement all 5 gestures with debouncing
+  [ ] Build usePlayer.ts — full audio state management
+  [ ] Wire everything in App.tsx
+  [ ] Build GestureBadge.tsx with fade animation
+  [ ] Add remaining 4 tracks to tracks.ts
+  [ ] Test all gestures end-to-end
+
+DAY 3 — Polish + Demo
+  [ ] Refine UI styling (dark theme, album art glow, transitions)
+  [ ] Add ARIA labels to all interactive elements
+  [ ] Test edge cases (no hand detected, gesture held too long, low light)
+  [ ] Add a brief onboarding tooltip on first load showing gesture guide
+  [ ] Record demo video
+
+
+----------------------------------------------------------------
+GESTURE QUICK REFERENCE (for demo video / README)
+----------------------------------------------------------------
+  Open Palm        →  Play / Pause
+  Point Right      →  Next Track
+  Point Left       →  Previous Track
+  Thumbs Up        →  Volume Up
+  Thumbs Down      →  Volume Down
+
+
+----------------------------------------------------------------
+WHAT THIS IS NOT
+----------------------------------------------------------------
+- No backend server
+- No API keys or LLM calls
+- No npm install of MediaPipe (CDN only to avoid Vite/WASM issues)
+- No drag-and-drop file upload (hardcoded tracks only for prototype)
+- No browser extension (scoped to this single-page app only)
+
+
+----------------------------------------------------------------
+END OF PLAN
+----------------------------------------------------------------
