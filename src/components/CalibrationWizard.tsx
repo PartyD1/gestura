@@ -10,11 +10,13 @@ interface CalibrationWizardProps {
   frameProgress: number
   verifyPassed: boolean
   hasHand: boolean
+  liveDetectedCount: number
+  expectedCount: 0 | 1 | 2 | 3 | 4 | 5 | null
+  poseMatch: boolean
   videoRef: RefObject<HTMLVideoElement | null>
   landmarks: NormalizedLandmarkList | null
   extendedMask: Record<FingerName, boolean>
   onStart: () => void
-  onContinue: () => void
 }
 
 export function CalibrationWizard({
@@ -23,15 +25,22 @@ export function CalibrationWizard({
   frameProgress,
   verifyPassed,
   hasHand,
+  liveDetectedCount,
+  expectedCount,
+  poseMatch,
   videoRef,
   landmarks,
   extendedMask,
   onStart,
-  onContinue,
 }: CalibrationWizardProps) {
   const showProgress =
-    step === 'fist' || step.startsWith('count')
+    step === 'fist' ||
+    step.startsWith('count') ||
+    step === 'camera' ||
+    step === 'verify'
   const showCamera = step !== 'intro'
+  const showPoseFeedback =
+    expectedCount !== null && step !== 'camera' && step !== 'intro'
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm sm:p-6">
@@ -68,9 +77,49 @@ export function CalibrationWizard({
               }`}
             >
               {hasHand
-                ? 'Hand detected — continuing…'
+                ? 'Hand detected — hold in frame…'
                 : 'Show your hand in the camera'}
             </p>
+          )}
+
+          {showPoseFeedback && (
+            <div
+              className={`mt-4 rounded-lg border px-4 py-3 ${
+                poseMatch
+                  ? 'border-emerald-500/40 bg-emerald-950/40'
+                  : 'border-amber-500/40 bg-amber-950/40'
+              }`}
+            >
+              <div className="flex items-baseline justify-between gap-4">
+                <div>
+                  <p className="text-xs text-zinc-500">Detected</p>
+                  <p
+                    className={`text-3xl font-bold tabular-nums ${
+                      poseMatch ? 'text-emerald-300' : 'text-amber-300'
+                    }`}
+                  >
+                    {liveDetectedCount}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-zinc-500">Target</p>
+                  <p className="text-3xl font-bold tabular-nums text-white">
+                    {expectedCount}
+                  </p>
+                </div>
+              </div>
+              {!poseMatch && (
+                <p className="mt-2 text-xs text-amber-200/90">
+                  Showing {liveDetectedCount} — need {expectedCount}. Adjust your
+                  hand until they match.
+                </p>
+              )}
+              {poseMatch && (
+                <p className="mt-2 text-xs text-emerald-200/90">
+                  Pose matched — hold steady while the bar fills.
+                </p>
+              )}
+            </div>
           )}
 
           {showProgress && (
@@ -93,26 +142,15 @@ export function CalibrationWizard({
             </p>
           )}
 
-          <div className="mt-8 flex gap-3">
-            {step === 'intro' && (
-              <button
-                type="button"
-                onClick={onStart}
-                className="flex-1 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500"
-              >
-                Start calibration
-              </button>
-            )}
-            {step === 'camera' && hasHand && (
-              <button
-                type="button"
-                onClick={onContinue}
-                className="flex-1 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500"
-              >
-                Continue
-              </button>
-            )}
-          </div>
+          {step === 'intro' && (
+            <button
+              type="button"
+              onClick={onStart}
+              className="mt-8 w-full rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500"
+            >
+              Start calibration
+            </button>
+          )}
 
           <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-950/50 p-4 text-xs text-zinc-500">
             <p className="font-medium text-zinc-400">Finger map</p>

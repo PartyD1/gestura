@@ -26,10 +26,13 @@ function App() {
     frameProgress,
     stepInstruction,
     verifyPassed,
+    liveDetectedCount,
+    liveExtendedMask,
+    poseMatch,
+    expectedCount,
     startCalibration,
     resetCalibration,
     ingestFrame,
-    advanceStep,
   } = useCalibration()
   const [showGuide, setShowGuide] = useState(false)
 
@@ -79,17 +82,6 @@ function App() {
   }, [landmarks, calibrationStatus, ingestFrame])
 
   useEffect(() => {
-    if (
-      calibrationStatus === 'calibrating' &&
-      calibrationStep === 'camera' &&
-      landmarks
-    ) {
-      const t = window.setTimeout(() => advanceStep(), 800)
-      return () => window.clearTimeout(t)
-    }
-  }, [calibrationStatus, calibrationStep, landmarks, advanceStep])
-
-  useEffect(() => {
     if (calibrationStatus === 'ready' && shouldShowGestureGuide()) {
       setShowGuide(true)
     }
@@ -106,13 +98,21 @@ function App() {
     calibrationStatus === 'needed' || calibrationStatus === 'calibrating'
 
   const previewMask = useMemo(() => {
+    if (calibrationStatus === 'calibrating') return liveExtendedMask
     if (!landmarks) return extendedMask
     if (gesturesEnabled) return extendedMask
     return getExtendedFingerMask(
       normalizeLandmarks(landmarks),
       fingerCalibration ?? DEFAULT_CALIBRATION,
     )
-  }, [landmarks, extendedMask, gesturesEnabled, fingerCalibration])
+  }, [
+    landmarks,
+    extendedMask,
+    gesturesEnabled,
+    fingerCalibration,
+    calibrationStatus,
+    liveExtendedMask,
+  ])
 
   return (
     <div className="gestura-bg relative min-h-full">
@@ -143,11 +143,13 @@ function App() {
           frameProgress={frameProgress}
           verifyPassed={verifyPassed}
           hasHand={!!landmarks}
+          liveDetectedCount={liveDetectedCount}
+          expectedCount={expectedCount}
+          poseMatch={poseMatch}
           videoRef={videoRef}
           landmarks={landmarks}
           extendedMask={previewMask}
           onStart={startCalibration}
-          onContinue={advanceStep}
         />
       )}
 
