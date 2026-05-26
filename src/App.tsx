@@ -1,15 +1,50 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DEFAULT_CALIBRATION } from './lib/calibration'
+import {
+  fingerScores,
+  getExtendedFingerMask,
+  normalizeLandmarks,
+} from './lib/handGeometry'
+import { CalibrationWizard } from './components/CalibrationWizard'
 import { GestureBadge } from './components/GestureBadge'
 import { GestureCamera } from './components/GestureCamera'
+import { GestureGuide, shouldShowGestureGuide } from './components/GestureGuide'
+import { GestureHud } from './components/GestureHud'
 import { MusicPlayer } from './components/MusicPlayer'
+import { useCalibration } from './hooks/useCalibration'
 import { useGestures } from './hooks/useGestures'
 import { useMediaPipe } from './hooks/useMediaPipe'
 import { usePlayer } from './hooks/usePlayer'
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { landmarks } = useMediaPipe(videoRef)
-  const { gesture, gestureId } = useGestures(landmarks)
+  const { landmarks, cameraError } = useMediaPipe(videoRef)
+  const {
+    status: calibrationStatus,
+    calibration: fingerCalibration,
+    step: calibrationStep,
+    frameProgress,
+    stepInstruction,
+    verifyPassed,
+    startCalibration,
+    resetCalibration,
+    ingestFrame,
+    advanceStep,
+  } = useCalibration()
+  const [showGuide, setShowGuide] = useState(false)
+
+  const gesturesEnabled = calibrationStatus === 'ready'
+
+  const {
+    fingerCount,
+    extendedMask,
+    phase,
+    confirmProgress,
+    pendingGesture,
+    gesture,
+    gestureId,
+  } = useGestures(landmarks, fingerCalibration, gesturesEnabled)
+
   const {
     audioRef,
     currentTrack,
@@ -25,15 +60,59 @@ function App() {
     handleGesture,
     formatTime,
   } = usePlayer()
+
   const lastGestureId = useRef(0)
+  const debugMode = useMemo(
+    () => new URLSearchParams(window.location.search).get('debug') === '1',
+    [],
+  )
 
   useEffect(() => {
-    if (!gesture || gestureId === 0 || gestureId === lastGestureId.current) {
-      return
+    if (!debugMode || !landmarks) return
+    console.debug('[Gestura debug] finger scores', fingerScores(landmarks))
+  }, [landmarks, debugMode])
+
+  useEffect(() => {
+    if (calibrationStatus === 'calibrating') {
+      ingestFrame(landmarks)
     }
+  }, [landmarks, calibrationStatus, ingestFrame])
+
+  useEffect(() => {
+    if (
+      calibrationStatus === 'calibrating' &&
+      calibrationStep === 'camera' &&
+      landmarks
+    ) {
+      const t = window.setTimeout(() => advanceStep(), 800)
+      return () => window.clearTimeout(t)
+    }
+  }, [calibrationStatus, calibrationStep, landmarks, advanceStep])
+
+  useEffect(() => {
+    if (calibrationStatus === 'ready' && shouldShowGestureGuide()) {
+      setShowGuide(true)
+    }
+  }, [calibrationStatus])
+
+  useEffect(() => {
+    if (!gesturesEnabled || !gesture || gestureId === 0) return
+    if (gestureId === lastGestureId.current) return
     lastGestureId.current = gestureId
     handleGesture(gesture)
-  }, [gesture, gestureId, handleGesture])
+  }, [gesture, gestureId, handleGesture, gesturesEnabled])
+
+  const showWizard =
+    calibrationStatus === 'needed' || calibrationStatus === 'calibrating'
+
+  const previewMask = useMemo(() => {
+    if (!landmarks) return extendedMask
+    if (gesturesEnabled) return extendedMask
+    return getExtendedFingerMask(
+      normalizeLandmarks(landmarks),
+      fingerCalibration ?? DEFAULT_CALIBRATION,
+    )
+  }, [landmarks, extendedMask, gesturesEnabled, fingerCalibration])
 
   return (
     <div className="gestura-bg relative min-h-full">
@@ -42,9 +121,47 @@ function App() {
           Gestura
         </h1>
         <p className="text-sm text-zinc-500">
-          Hand-gesture music control
+          {gesturesEnabled
+            ? 'Hold fingers 1–5 to control music'
+            : 'Complete calibration to enable gestures'}
         </p>
       </header>
+
+      {cameraError && (
+        <div
+          className="absolute left-1/2 top-20 z-50 max-w-md -translate-x-1/2 rounded-lg border border-red-500/40 bg-red-950/90 px-4 py-3 text-sm text-red-200"
+          role="alert"
+        >
+          Camera error: {cameraError}. Allow camera access and refresh.
+        </div>
+      )}
+
+      {showWizard && (
+        <CalibrationWizard
+          step={calibrationStep}
+          instruction={stepInstruction}
+          frameProgress={frameProgress}
+          verifyPassed={verifyPassed}
+          hasHand={!!landmarks}
+          videoRef={videoRef}
+          landmarks={landmarks}
+          extendedMask={previewMask}
+          onStart={startCalibration}
+          onContinue={advanceStep}
+        />
+      )}
+
+      {showGuide && !showWizard && (
+        <GestureGuide onDismiss={() => setShowGuide(false)} />
+      )}
+
+      <GestureHud
+        fingerCount={fingerCount}
+        phase={phase}
+        confirmProgress={confirmProgress}
+        pendingGesture={pendingGesture}
+        gesturesEnabled={gesturesEnabled}
+      />
 
       <GestureBadge gesture={gesture} gestureId={gestureId} />
 
@@ -63,7 +180,14 @@ function App() {
         onSeek={seek}
       />
 
-      <GestureCamera videoRef={videoRef} landmarks={landmarks} />
+      {!showWizard && (
+        <GestureCamera
+          videoRef={videoRef}
+          landmarks={landmarks}
+          extendedMask={extendedMask}
+          onRecalibrate={gesturesEnabled ? resetCalibration : undefined}
+        />
+      )}
     </div>
   )
 }
