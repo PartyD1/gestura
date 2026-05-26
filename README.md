@@ -1,28 +1,42 @@
 # Gestura
 
-Gestura is a browser-based music player controlled entirely by hand gestures. It uses your webcam and [MediaPipe Hands](https://google.github.io/mediapipe/solutions/hands) to detect hand landmarks in real time, classifies gestures with pure geometry (no ML training), and maps them to playback actions.
+Gestura is a browser-based music player controlled entirely by hand gestures. It uses your webcam and [MediaPipe Hands](https://google.github.io/mediapipe/solutions/hands) to detect hand landmarks in real time, counts how many fingers you hold up, and maps that to playback actions.
 
 Built for **BananaBots** as assistive technology for motor-impaired users who cannot comfortably use a keyboard or mouse but still want independent music control.
 
 ## Features
 
-- Play, pause, skip tracks, and adjust volume with hand gestures
+- Finger-count gestures (1–5) with hold-to-confirm feedback
+- Per-user hand calibration stored in the browser
+- Live gesture HUD with progress ring before each action fires
 - Runs 100% in the browser — no backend, API keys, or accounts
-- Small webcam HUD with optional landmark overlay
-- On-screen gesture feedback with accessible live announcements
-- Keyboard-free music UI with ARIA labels on controls
+- Webcam HUD with per-finger extended/folded overlay
+- Accessible live announcements and ARIA labels on controls
 
 ## Gesture controls
 
-| Gesture | Action |
-|--------|--------|
-| Open palm | Play / Pause |
-| Point right (on screen) | Next track |
-| Point left (on screen) | Previous track |
-| Thumbs up | Volume up |
-| Thumbs down | Volume down |
+After calibration, hold up fingers and keep steady until the violet ring completes:
 
-**Tips for skip gestures:** extend only your index finger, point horizontally toward the left or right edge of the screen, and hold steady for about half a second.
+| Fingers | Action |
+|--------|--------|
+| 1 | Volume down |
+| 2 | Volume up |
+| 3 | Previous track |
+| 4 | Next track |
+| 5 (open hand) | Play / pause |
+
+Release or change finger count before repeating the same action.
+
+## Calibration (required)
+
+On first visit:
+
+1. Allow camera access
+2. Hold a **fist** for the baseline sample
+3. Hold **1, 2, 3, 4, then 5** fingers as prompted
+4. Verify by showing **1, 3, and 5** fingers once each
+
+Calibration is saved in `localStorage`. Use **Recalibrate gestures** in the camera panel if lighting or distance changes.
 
 ## Tech stack
 
@@ -47,7 +61,7 @@ npm install
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually `http://localhost:5173/`) and allow camera access when prompted.
+Open the URL shown in the terminal (usually `http://localhost:5173/`) and complete calibration when prompted.
 
 ### Production build
 
@@ -56,34 +70,38 @@ npm run build
 npm run preview
 ```
 
+### Debug mode
+
+Add `?debug=1` to the URL to log finger extension scores in the browser console.
+
 ## Project structure
 
 ```
 src/
-├── App.tsx                 # Wires hooks and components
-├── components/
-│   ├── MusicPlayer.tsx     # Album art, controls, progress, volume
-│   ├── GestureCamera.tsx   # Webcam HUD + landmark overlay
-│   └── GestureBadge.tsx    # Gesture toast notifications
+├── App.tsx
+├── lib/
+│   ├── handGeometry.ts     # Normalized finger extension + counting
+│   ├── gestureMap.ts       # Finger count → player action
+│   └── calibration.ts      # Threshold types + localStorage
 ├── hooks/
-│   ├── useMediaPipe.ts     # Webcam + hand landmark detection
-│   ├── useGestures.ts      # Landmark → gesture classification
-│   └── usePlayer.ts        # Audio playback state
-├── data/tracks.ts          # Hardcoded royalty-free track list
-└── types/mediapipe.d.ts    # Global types for MediaPipe CDN scripts
+│   ├── useMediaPipe.ts     # Mirrored input, smoothed landmarks
+│   ├── useGestures.ts      # Stability, hold-to-confirm, firing
+│   ├── useCalibration.ts   # Calibration wizard logic
+│   └── usePlayer.ts        # Audio playback
+└── components/
+    ├── GestureHud.tsx      # Large count + confirm ring
+    ├── CalibrationWizard.tsx
+    ├── GestureGuide.tsx
+    ├── GestureCamera.tsx
+    ├── GestureBadge.tsx
+    └── MusicPlayer.tsx
 ```
-
-MediaPipe scripts are loaded in `index.html` from jsDelivr before the React bundle.
-
-## Tracks
-
-Demo tracks use royalty-free audio from [SoundHelix](https://www.soundhelix.com/) and album art from [Unsplash](https://unsplash.com/). Edit `src/data/tracks.ts` to change the playlist.
 
 ## Accessibility
 
-- All player buttons include `aria-label`s
+- Gesture badge and HUD use `aria-live="polite"`
+- Player buttons include `aria-label`s
 - Progress bar uses `role="progressbar"` with `aria-valuenow`
-- Gesture badge uses `aria-live="polite"` for screen reader announcements
 
 ## License
 

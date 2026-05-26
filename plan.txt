@@ -265,7 +265,7 @@ Gesture label map:
   "PLAY_PAUSE" → "✋  Play / Pause"
   "NEXT"       → "👉  Next Track"
   "PREV"       → "👈  Previous Track"
-  "VOL_UP"     → "👍  Volume Up"
+  "VOL_UP"     → "👍  Volume Up"  
   "VOL_DOWN"   → "👎  Volume Down"
 
 Accessibility: the badge div must have aria-live="polite" and aria-atomic="true"
@@ -332,11 +332,14 @@ DAY 3 — Polish + Demo
 ----------------------------------------------------------------
 GESTURE QUICK REFERENCE (for demo video / README)
 ----------------------------------------------------------------
-  Open Palm        →  Play / Pause
-  Point Right      →  Next Track
-  Point Left       →  Previous Track
-  Thumbs Up        →  Volume Up
-  Thumbs Down      →  Volume Down
+  1 Finger         →  Volume Down
+  2 Fingers        →  Volume Up
+  3 Fingers        →  Previous Track
+  4 Fingers        →  Next Track
+  5 Fingers (open) →  Play / Pause
+
+  Requires one-time hand calibration on first load.
+  Hold pose until confirm ring completes before action fires.
 
 
 ----------------------------------------------------------------

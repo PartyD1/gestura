@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { tracks, type Track } from '../data/tracks'
-import type { Gesture } from './useGestures'
+import type { Gesture } from '../types/gesture'
 
 export function usePlayer() {
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -9,6 +9,8 @@ export function usePlayer() {
   const [volume, setVolumeState] = useState(0.7)
   const volumeRef = useRef(0.7)
   volumeRef.current = volume
+  const isPlayingRef = useRef(false)
+  isPlayingRef.current = isPlaying
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
 
@@ -80,17 +82,32 @@ export function usePlayer() {
     const audio = audioRef.current
     if (!audio) return
 
-    audio.src = currentTrack.audioSrc
-    audio.volume = volume
+    const playWhenReady = () => {
+      audio.volume = volumeRef.current
+      if (isPlayingRef.current) {
+        void audio.play().catch(() => setIsPlaying(false))
+      }
+    }
 
-    if (isPlaying) {
-      void audio.play().catch(() => setIsPlaying(false))
+    audio.src = currentTrack.audioSrc
+    audio.load()
+
+    if (audio.readyState >= 2) {
+      playWhenReady()
+    } else {
+      audio.addEventListener('canplay', playWhenReady, { once: true })
+    }
+
+    return () => {
+      audio.removeEventListener('canplay', playWhenReady)
     }
   }, [currentIndex, currentTrack.audioSrc])
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
+
+    audio.volume = volume
 
     const onTimeUpdate = () => {
       if (audio.duration > 0) {
@@ -122,7 +139,7 @@ export function usePlayer() {
       audio.removeEventListener('play', onPlay)
       audio.removeEventListener('pause', onPause)
     }
-  }, [nextTrack])
+  }, [nextTrack, volume])
 
   const formatTime = (seconds: number) => {
     if (!Number.isFinite(seconds)) return '0:00'

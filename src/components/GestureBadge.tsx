@@ -1,13 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Gesture } from '../hooks/useGestures'
-
-const GESTURE_LABELS: Record<NonNullable<Gesture>, string> = {
-  PLAY_PAUSE: '✋  Play / Pause',
-  NEXT: '👉  Next Track',
-  PREV: '👈  Previous Track',
-  VOL_UP: '👍  Volume Up',
-  VOL_DOWN: '👎  Volume Down',
-}
+import { GESTURE_BADGE_LABELS } from '../lib/gestureMap'
+import type { Gesture } from '../types/gesture'
 
 interface GestureBadgeProps {
   gesture: Gesture
@@ -21,7 +14,7 @@ export function GestureBadge({ gesture, gestureId }: GestureBadgeProps) {
   useEffect(() => {
     if (!gesture || gestureId === 0) return
 
-    setLabel(GESTURE_LABELS[gesture])
+    setLabel(GESTURE_BADGE_LABELS[gesture])
     setVisible(true)
 
     const hideTimer = window.setTimeout(() => setVisible(false), 1500)
