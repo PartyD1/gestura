@@ -133,15 +133,17 @@ export function isFingerExtended(
   }
   const tipToPalm = dist(thumbTip, palmCenter)
   const ipToPalm = dist(thumbIp, palmCenter)
-  const thumbOpenBySpread = tipToPalm > ipToPalm + 0.12
+  const thumbOpenBySpread = tipToPalm > ipToPalm + 0.08
 
   // Secondary guard: open thumb should sit farther from index base
   // than the thumb IP does.
   const tipToIndexBase = dist(thumbTip, indexMcp)
   const ipToIndexBase = dist(thumbIp, indexMcp)
-  const thumbOpenByIndexGap = tipToIndexBase > ipToIndexBase + 0.08
+  const thumbOpenByIndexGap = tipToIndexBase > ipToIndexBase + 0.05
 
-  return thumbOpenBySpread && thumbOpenByIndexGap
+  // Slightly favor openness to reduce false "closed" reads while still
+  // requiring the thumb to move away from the palm.
+  return thumbOpenBySpread || thumbOpenByIndexGap
 }
 
 export function getExtendedFingerMask(

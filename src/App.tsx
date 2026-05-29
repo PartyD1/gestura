@@ -157,6 +157,17 @@ function App() {
         <GestureGuide onDismiss={() => setShowGuide(false)} />
       )}
 
+      {!showWizard && !showGuide && (
+        <button
+          type="button"
+          onClick={() => setShowGuide(true)}
+          className="fixed bottom-6 left-6 z-40 rounded-full border border-violet-400/40 bg-violet-900/70 px-4 py-2 text-xs font-semibold text-violet-100 shadow-lg backdrop-blur-md transition hover:bg-violet-800/80"
+          aria-label="Open gesture guide"
+        >
+          Gesture Guide
+        </button>
+      )}
+
       <GestureHud
         fingerCount={fingerCount}
         phase={phase}
