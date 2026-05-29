@@ -4,11 +4,11 @@ import { LANDMARK } from '../lib/handGeometry'
 import type { NormalizedLandmarkList } from '../types/mediapipe'
 
 const FINGER_LANDMARKS: Record<FingerName, number> = {
-  thumb: LANDMARK.THUMB_TIP,
-  index: LANDMARK.INDEX_TIP,
+  thumb:  LANDMARK.THUMB_TIP,
+  index:  LANDMARK.INDEX_TIP,
   middle: LANDMARK.MIDDLE_TIP,
-  ring: LANDMARK.RING_TIP,
-  pinky: LANDMARK.PINKY_TIP,
+  ring:   LANDMARK.RING_TIP,
+  pinky:  LANDMARK.PINKY_TIP,
 }
 
 interface CameraPreviewProps {
@@ -29,7 +29,7 @@ export function CameraPreview({
   showVideo = true,
 }: CameraPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const videoRef  = useRef<HTMLVideoElement>(null)
 
   // Attach the shared webcam stream to this preview's own <video> element.
   useEffect(() => {
@@ -40,7 +40,7 @@ export function CameraPreview({
     }
     if (stream) {
       video.play().catch(() => {
-        /* autoplay may reject until user interaction; harmless here */
+        /* autoplay may be deferred until user interaction; harmless */
       })
     }
   }, [stream])
@@ -48,24 +48,24 @@ export function CameraPreview({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
     let frame = 0
     const draw = () => {
       const video = videoRef.current
-      canvas.width = video?.videoWidth || 640
+      canvas.width  = video?.videoWidth  || 640
       canvas.height = video?.videoHeight || 480
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       if (landmarks) {
-        const dotRadius = size === 'large' ? 9 : 7
+        const dotRadius    = size === 'large' ? 9 : 7
         const dotRadiusDim = size === 'large' ? 5 : 4
         for (const [finger, tipIndex] of Object.entries(FINGER_LANDMARKS)) {
-          const point = landmarks[tipIndex]
+          const point    = landmarks[tipIndex]
           const extended = extendedMask[finger as FingerName]
-          ctx.fillStyle = extended ? '#34d399' : '#52525b'
+          // Extended: accessible green; retracted: medium gray for visibility on light bg
+          ctx.fillStyle = extended ? '#15803D' : '#9CA3AF'
           ctx.beginPath()
           ctx.arc(
             point.x * canvas.width,
@@ -75,6 +75,12 @@ export function CameraPreview({
             2 * Math.PI,
           )
           ctx.fill()
+          // White ring on extended dots for contrast over any background
+          if (extended) {
+            ctx.strokeStyle = 'white'
+            ctx.lineWidth = 2
+            ctx.stroke()
+          }
         }
       }
 
@@ -85,10 +91,8 @@ export function CameraPreview({
     return () => cancelAnimationFrame(frame)
   }, [landmarks, extendedMask, size])
 
-  const aspectClass = 'aspect-[4/3]'
-
   return (
-    <div className={`relative overflow-hidden bg-black ${aspectClass} ${className}`}>
+    <div className={`relative overflow-hidden bg-[#F7F5F2] aspect-[4/3] ${className}`}>
       {showVideo && (
         <video
           ref={videoRef}
@@ -99,12 +103,9 @@ export function CameraPreview({
         />
       )}
       {/*
-        Canvas must NOT be CSS-mirrored. The video is mirrored (scaleX(-1)) but
-        the landmarks come from MediaPipe which already processed a flipped frame,
-        so landmark.x is in the mirrored coordinate space. Drawing at landmark.x
-        on an un-mirrored canvas puts the dot at the same screen position as the
-        corresponding pixel in the mirrored video. Double-mirroring the canvas
-        would flip the dots to the wrong side.
+        Canvas must NOT be CSS-mirrored. Landmarks are in MediaPipe's
+        already-flipped space; the video is CSS-mirrored; drawing at
+        landmark.x on an un-mirrored canvas aligns correctly.
       */}
       <canvas
         ref={canvasRef}

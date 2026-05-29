@@ -4,6 +4,7 @@ import {
   SkipBack,
   SkipForward,
   Volume2,
+  VolumeX,
 } from 'lucide-react'
 import type { RefObject } from 'react'
 import type { Track } from '../data/tracks'
@@ -39,84 +40,116 @@ export function MusicPlayer({
 }: MusicPlayerProps) {
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const fraction = (e.clientX - rect.left) / rect.width
-    onSeek(fraction)
+    onSeek((e.clientX - rect.left) / rect.width)
+  }
+
+  const handleProgressKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      onSeek(Math.min(1, progress + 0.05))
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      onSeek(Math.max(0, progress - 0.05))
+    } else if (e.key === 'Home') {
+      e.preventDefault()
+      onSeek(0)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      onSeek(1)
+    }
   }
 
   return (
-    <main className="flex min-h-full flex-col items-center justify-center px-6 py-12">
+    <section
+      className="rounded-2xl border border-[#E4E0DA] bg-white shadow-sm"
+      aria-label="Music player"
+    >
       <audio ref={audioRef} preload="metadata" />
 
-      <div className="w-full max-w-md space-y-8 text-center">
+      {/* Album art */}
+      <div className="relative overflow-hidden rounded-t-2xl">
         <img
           src={track.albumArt}
           alt={`${track.title} album art`}
-          className="mx-auto aspect-square w-72 max-w-full rounded-2xl object-cover shadow-[0_0_60px_rgba(124,58,237,0.35)]"
+          className="aspect-[2/1] w-full object-cover"
         />
-
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+        {/* Subtle gradient overlay so text is legible over art */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 px-6 pb-5">
+          <p className="text-lg font-bold leading-tight text-white drop-shadow">
             {track.title}
-          </h1>
-          <p className="mt-1 text-base text-zinc-400">{track.artist}</p>
+          </p>
+          <p className="mt-0.5 text-sm text-white/80 drop-shadow">{track.artist}</p>
         </div>
+      </div>
 
-        <div className="space-y-2">
+      <div className="space-y-5 px-6 py-6">
+        {/* Progress bar */}
+        <div>
           <div
-            role="progressbar"
+            role="slider"
+            aria-label="Track progress"
             aria-valuenow={Math.round(progress * 100)}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Track progress"
-            className="group h-2 cursor-pointer rounded-full bg-zinc-800"
-            onClick={handleProgressClick}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                onSeek(0.5)
-              }
-            }}
+            aria-valuetext={`${currentTimeLabel} of ${durationLabel}`}
             tabIndex={0}
+            className="group relative h-4 cursor-pointer rounded-full bg-[#E4E0DA]"
+            onClick={handleProgressClick}
+            onKeyDown={handleProgressKey}
           >
             <div
-              className="h-full rounded-full bg-violet-500 transition-all duration-150 group-hover:bg-violet-400"
+              className="h-full rounded-full bg-[#1D4ED8] transition-all duration-150"
               style={{ width: `${progress * 100}%` }}
             />
+            {/* Visible thumb handle */}
+            <div
+              className="absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full border-2 border-white bg-[#1D4ED8] shadow-md transition-all duration-150"
+              style={{ left: `calc(${progress * 100}% - 10px)` }}
+              aria-hidden="true"
+            />
           </div>
-          <div className="flex justify-between text-xs text-zinc-500">
+          <div className="mt-2 flex justify-between text-sm text-[#52606D]">
             <span>{currentTimeLabel}</span>
             <span>{durationLabel}</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-6">
+        {/* Playback controls */}
+        <div className="flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={onPrev}
             aria-label="Previous track"
-            className="rounded-full p-3 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E4E0DA] bg-white text-[#52606D] shadow-sm transition-colors hover:border-[#BFDBFE] hover:bg-[#DBEAFE] hover:text-[#1D4ED8]"
           >
-            <SkipBack size={28} />
+            <SkipBack size={22} />
           </button>
+
           <button
             type="button"
             onClick={onTogglePlay}
             aria-label={isPlaying ? 'Pause' : 'Play'}
-            className="rounded-full bg-violet-600 p-5 text-white shadow-lg shadow-violet-900/50 transition-transform hover:scale-105 hover:bg-violet-500"
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1D4ED8] text-white shadow-md transition-colors hover:bg-[#1E40AF]"
           >
-            {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
+            {isPlaying
+              ? <Pause size={28} fill="currentColor" />
+              : <Play size={28} fill="currentColor" className="translate-x-0.5" />}
           </button>
+
           <button
             type="button"
             onClick={onNext}
             aria-label="Next track"
-            className="rounded-full p-3 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="flex h-12 w-12 items-center justify-center rounded-full border border-[#E4E0DA] bg-white text-[#52606D] shadow-sm transition-colors hover:border-[#BFDBFE] hover:bg-[#DBEAFE] hover:text-[#1D4ED8]"
           >
-            <SkipForward size={28} />
+            <SkipForward size={22} />
           </button>
         </div>
 
-        <div className="flex items-center justify-center gap-3 px-4">
-          <Volume2 size={20} className="shrink-0 text-zinc-500" aria-hidden="true" />
+        {/* Volume slider */}
+        <div className="flex items-center gap-3">
+          <VolumeX size={18} className="shrink-0 text-[#7B8794]" aria-hidden="true" />
           <input
             type="range"
             min={0}
@@ -124,11 +157,15 @@ export function MusicPlayer({
             step={0.01}
             value={volume}
             onChange={(e) => onVolumeChange(Number(e.target.value))}
-            aria-label="Volume"
-            className="h-1 w-full max-w-xs cursor-pointer accent-violet-500"
+            aria-label={`Volume: ${Math.round(volume * 100)}%`}
+            className="h-2 w-full cursor-pointer accent-[#1D4ED8]"
           />
+          <Volume2 size={18} className="shrink-0 text-[#52606D]" aria-hidden="true" />
+          <span className="w-10 text-right text-sm font-medium text-[#52606D]" aria-live="polite">
+            {Math.round(volume * 100)}%
+          </span>
         </div>
       </div>
-    </main>
+    </section>
   )
 }

@@ -1,3 +1,4 @@
+import { CheckCircle, AlertCircle, Hand, Clock } from 'lucide-react'
 import { fingerCountLabel } from '../lib/gestureMap'
 import type { GesturePhase, RejectReason } from '../hooks/useGestures'
 import type { Gesture } from '../types/gesture'
@@ -11,122 +12,107 @@ interface GestureHudProps {
   rejectReason: RejectReason
 }
 
-const PHASE_HINT: Record<GesturePhase, string> = {
-  searching: 'Show your hand',
-  detected: 'Hold steady…',
-  holding: 'Keep holding to confirm',
-  fired: 'Action sent',
-  cooldown: 'Relax your pose to continue',
+const PHASE_TEXT: Record<GesturePhase, string> = {
+  searching:  'Show your hand to the camera',
+  detected:   'Hold steady…',
+  holding:    'Keep holding to confirm',
+  fired:      'Action sent!',
+  cooldown:   'Relax your pose to continue',
 }
 
-const REJECT_HINT: Record<NonNullable<RejectReason>, string> = {
-  pose: 'Use an exact 1–5 pose',
-  distance: 'Move hand closer',
-  facing: 'Face your palm to the camera',
+const REJECT_TEXT: Record<NonNullable<RejectReason>, string> = {
+  pose:     'Use an exact 1–5 pose (see guide below)',
+  distance: 'Move your hand closer to the camera',
+  facing:   'Turn your palm to face the camera',
 }
 
 export function GestureHud({
   fingerCount,
   phase,
   confirmProgress,
-  pendingGesture,
   gesturesEnabled,
   rejectReason,
 }: GestureHudProps) {
   if (!gesturesEnabled) return null
 
-  const label =
-    fingerCount > 0
-      ? fingerCountLabel(fingerCount)
-      : pendingGesture
-        ? fingerCountLabel(fingerCount as 0 | 1 | 2 | 3 | 4 | 5)
-        : 'Show 1–5 fingers'
+  const isRejected = rejectReason !== null
+  const isFired = phase === 'fired'
+  const isHolding = phase === 'holding' || isFired
 
-  // Only animate the ring when the pose is fully recognized and holding.
-  const ringActive = phase === 'holding' || phase === 'fired'
-  const ringProgress = ringActive ? confirmProgress : 0
-  const circumference = 2 * Math.PI * 52
-  const dashOffset = circumference * (1 - ringProgress)
+  const label = fingerCount > 0 ? fingerCountLabel(fingerCount) : 'Show 1–5 fingers'
+  const statusText = rejectReason ? REJECT_TEXT[rejectReason] : PHASE_TEXT[phase]
 
-  // Ring colour: violet when recognized and progressing, amber when rejected.
-  const ringColor = rejectReason ? '#d97706' : '#7c3aed'
+  const circumference = 2 * Math.PI * 28
+  const dashOffset = isHolding ? circumference * (1 - confirmProgress) : circumference
 
-  // Hint text: rejection reason takes priority over phase hint.
-  const hintText = rejectReason ? REJECT_HINT[rejectReason] : PHASE_HINT[phase]
+  // Ring and number color based on state
+  const ringColor = isRejected ? '#B45309' : isFired ? '#15803D' : '#1D4ED8'
+  const bgColor   = isRejected ? '#FFFBEB' : isFired ? '#F0FDF4' : '#DBEAFE'
 
   return (
     <div
-      className="pointer-events-none fixed left-6 top-24 z-40 flex flex-col items-center gap-3"
+      className="flex items-center gap-4"
       aria-live="polite"
       aria-atomic="true"
     >
-      <div className="relative flex h-32 w-32 items-center justify-center">
+      {/* Ring + number */}
+      <div
+        className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: bgColor }}
+        aria-hidden="true"
+      >
         <svg
-          className="absolute inset-0 h-full w-full -rotate-90"
-          viewBox="0 0 112 112"
-          aria-hidden="true"
+          className="-rotate-90 absolute inset-0 h-full w-full"
+          viewBox="0 0 64 64"
         >
-          <circle
-            cx="56"
-            cy="56"
-            r="52"
-            fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="6"
-          />
-          {/* Rejection arc: dim amber stub to signal "hand seen but invalid" */}
-          {rejectReason && fingerCount > 0 && (
+          <circle cx="32" cy="32" r="28" fill="none" stroke="#E4E0DA" strokeWidth="4" />
+          {isHolding && (
             <circle
-              cx="56"
-              cy="56"
-              r="52"
+              cx="32" cy="32" r="28"
               fill="none"
               stroke={ringColor}
-              strokeWidth="6"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference * 0.75}
-              className="opacity-40"
-            />
-          )}
-          {/* Confirm progress arc */}
-          {ringActive && (
-            <circle
-              cx="56"
-              cy="56"
-              r="52"
-              fill="none"
-              stroke={ringColor}
-              strokeWidth="6"
+              strokeWidth="4"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={dashOffset}
               className="transition-[stroke-dashoffset] duration-75"
             />
           )}
+          {isRejected && fingerCount > 0 && (
+            <circle
+              cx="32" cy="32" r="28"
+              fill="none"
+              stroke={ringColor}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${circumference * 0.25} ${circumference * 0.75}`}
+              className="opacity-40"
+            />
+          )}
         </svg>
         <span
-          className={`text-5xl font-bold tabular-nums ${
-            fingerCount > 0
-              ? rejectReason
-                ? 'text-amber-400'
-                : 'text-white'
-              : 'text-zinc-600'
-          }`}
+          className="relative text-2xl font-bold tabular-nums"
+          style={{ color: fingerCount > 0 ? ringColor : '#C9C3BA' }}
         >
           {fingerCount}
         </span>
       </div>
 
-      <div className="max-w-[200px] text-center">
-        <p
-          className={`text-sm font-semibold ${
-            rejectReason ? 'text-amber-300' : 'text-violet-200'
-          }`}
-        >
-          {label}
-        </p>
-        <p className="mt-1 text-xs text-zinc-500">{hintText}</p>
+      {/* Status text */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {isFired && <CheckCircle size={15} className="shrink-0 text-[#15803D]" aria-hidden="true" />}
+          {isRejected && <AlertCircle size={15} className="shrink-0 text-[#B45309]" aria-hidden="true" />}
+          {phase === 'holding' && !isFired && <Clock size={15} className="shrink-0 text-[#1D4ED8]" aria-hidden="true" />}
+          {!isFired && !isRejected && phase === 'searching' && <Hand size={15} className="shrink-0 text-[#7B8794]" aria-hidden="true" />}
+          <p
+            className="text-sm font-semibold"
+            style={{ color: isRejected ? '#B45309' : isFired ? '#15803D' : '#1A2230' }}
+          >
+            {label}
+          </p>
+        </div>
+        <p className="mt-0.5 text-sm text-[#52606D]">{statusText}</p>
       </div>
     </div>
   )

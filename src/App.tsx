@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle } from 'lucide-react'
 import { DEFAULT_CALIBRATION } from './lib/calibration'
 import {
   fingerScores,
@@ -17,6 +18,14 @@ import { useCalibration } from './hooks/useCalibration'
 import { useGestures } from './hooks/useGestures'
 import { useMediaPipe } from './hooks/useMediaPipe'
 import { usePlayer } from './hooks/usePlayer'
+
+const FINGER_LEGEND = [
+  { count: 1, action: 'Volume down',   pose: 'Index only' },
+  { count: 2, action: 'Volume up',     pose: 'Index + middle' },
+  { count: 3, action: 'Previous',      pose: 'Index + middle + ring' },
+  { count: 4, action: 'Next track',    pose: 'Index + middle + ring + pinky' },
+  { count: 5, action: 'Play / Pause',  pose: 'Open hand' },
+]
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -126,10 +135,8 @@ function App() {
   ])
 
   return (
-    <div className="gestura-bg relative min-h-full">
-      {/* Persistent, always-mounted source video that MediaPipe reads frames
-          from. Keeping a single stable element here prevents the webcam stream
-          from being orphaned when preview components mount/unmount. */}
+    <div className="gestura-bg min-h-full">
+      {/* Persistent, always-mounted source video that MediaPipe reads frames from. */}
       <video
         ref={videoRef}
         className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
@@ -139,26 +146,119 @@ function App() {
         aria-hidden="true"
       />
 
-      <header className="absolute left-0 right-0 top-0 z-10 px-6 py-5">
-        <h1 className="text-lg font-bold tracking-wide text-white">
-          Gestura
-        </h1>
-        <p className="text-sm text-zinc-500">
-          {gesturesEnabled
-            ? 'Hold fingers 1–5 to control music'
-            : 'Complete calibration to enable gestures'}
-        </p>
-      </header>
-
+      {/* ── Global error banner ─────────────────────────────────────────── */}
       {cameraError && (
         <div
-          className="absolute left-1/2 top-20 z-50 max-w-md -translate-x-1/2 rounded-lg border border-red-500/40 bg-red-950/90 px-4 py-3 text-sm text-red-200"
+          className="flex items-start gap-3 border-b border-[#FCA5A5] bg-[#FFF1F1] px-6 py-4 text-[#B91C1C]"
           role="alert"
         >
-          Camera error: {cameraError}. Allow camera access and refresh.
+          <AlertTriangle size={20} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <p className="text-base font-medium">
+            Camera unavailable: {cameraError}. Allow camera access and refresh the page.
+          </p>
         </div>
       )}
 
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <header className="border-b border-[#E4E0DA] bg-white px-6 py-5">
+        <h1 className="text-2xl font-bold text-[#1A2230]">Gestura</h1>
+        <p className="mt-0.5 text-base text-[#52606D]">
+          Control your music with simple hand gestures
+        </p>
+      </header>
+
+      {/* ── Main content ────────────────────────────────────────────────── */}
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 p-6 lg:grid-cols-[1fr_380px]">
+
+        {/* Left column — music player */}
+        <main>
+          <MusicPlayer
+            audioRef={audioRef}
+            track={currentTrack}
+            isPlaying={isPlaying}
+            volume={volume}
+            progress={progress}
+            currentTimeLabel={formatTime(progress * duration)}
+            durationLabel={formatTime(duration)}
+            onTogglePlay={togglePlay}
+            onPrev={prevTrack}
+            onNext={nextTrack}
+            onVolumeChange={setVolume}
+            onSeek={seek}
+          />
+        </main>
+
+        {/* Right column — "Your hand" panel */}
+        <aside aria-label="Hand gesture controls">
+          <div className="rounded-2xl border border-[#E4E0DA] bg-white shadow-sm">
+            <div className="border-b border-[#E4E0DA] px-5 py-4">
+              <h2 className="text-lg font-semibold text-[#1A2230]">Your hand</h2>
+              <p className="mt-0.5 text-sm text-[#52606D]">
+                {gesturesEnabled
+                  ? 'Show your hand to control music'
+                  : 'Calibrate to enable gesture control'}
+              </p>
+            </div>
+
+            {/* Gesture status HUD */}
+            {gesturesEnabled && (
+              <div className="border-b border-[#E4E0DA] px-5 py-4">
+                <GestureHud
+                  fingerCount={fingerCount}
+                  phase={phase}
+                  confirmProgress={confirmProgress}
+                  pendingGesture={pendingGesture}
+                  gesturesEnabled={gesturesEnabled}
+                  rejectReason={rejectReason}
+                />
+              </div>
+            )}
+
+            {/* Camera preview */}
+            {!showWizard && (
+              <div className="border-b border-[#E4E0DA]">
+                <GestureCamera
+                  stream={stream}
+                  landmarks={landmarks}
+                  extendedMask={extendedMask}
+                  onRecalibrate={gesturesEnabled ? resetCalibration : undefined}
+                />
+              </div>
+            )}
+
+            {/* Always-visible finger legend */}
+            <div className="px-5 py-4">
+              <p className="mb-3 text-sm font-semibold text-[#1A2230]">Gesture map</p>
+              <ul className="space-y-2">
+                {FINGER_LEGEND.map(({ count, action, pose }) => (
+                  <li key={count} className="flex items-center gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DBEAFE] text-sm font-bold text-[#1D4ED8]">
+                      {count}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-medium text-[#1A2230]">{action}</span>
+                      <span className="block text-xs text-[#52606D]">{pose}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Guide / help button */}
+              {!showWizard && (
+                <button
+                  type="button"
+                  onClick={() => setShowGuide(true)}
+                  className="mt-4 w-full rounded-xl border border-[#BFDBFE] bg-[#DBEAFE] px-4 py-2.5 text-sm font-semibold text-[#1D4ED8] transition-colors hover:bg-[#BFDBFE]"
+                >
+                  View full gesture guide
+                </button>
+              )}
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* ── Overlays ────────────────────────────────────────────────────── */}
       {showWizard && (
         <CalibrationWizard
           step={calibrationStep}
@@ -180,51 +280,7 @@ function App() {
         <GestureGuide onDismiss={() => setShowGuide(false)} />
       )}
 
-      {!showWizard && !showGuide && (
-        <button
-          type="button"
-          onClick={() => setShowGuide(true)}
-          className="fixed bottom-6 left-6 z-40 rounded-full border border-violet-400/40 bg-violet-900/70 px-4 py-2 text-xs font-semibold text-violet-100 shadow-lg backdrop-blur-md transition hover:bg-violet-800/80"
-          aria-label="Open gesture guide"
-        >
-          Gesture Guide
-        </button>
-      )}
-
-      <GestureHud
-        fingerCount={fingerCount}
-        phase={phase}
-        confirmProgress={confirmProgress}
-        pendingGesture={pendingGesture}
-        gesturesEnabled={gesturesEnabled}
-        rejectReason={rejectReason}
-      />
-
       <GestureBadge gesture={gesture} gestureId={gestureId} />
-
-      <MusicPlayer
-        audioRef={audioRef}
-        track={currentTrack}
-        isPlaying={isPlaying}
-        volume={volume}
-        progress={progress}
-        currentTimeLabel={formatTime(progress * duration)}
-        durationLabel={formatTime(duration)}
-        onTogglePlay={togglePlay}
-        onPrev={prevTrack}
-        onNext={nextTrack}
-        onVolumeChange={setVolume}
-        onSeek={seek}
-      />
-
-      {!showWizard && (
-        <GestureCamera
-          stream={stream}
-          landmarks={landmarks}
-          extendedMask={extendedMask}
-          onRecalibrate={gesturesEnabled ? resetCalibration : undefined}
-        />
-      )}
     </div>
   )
 }

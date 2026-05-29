@@ -16,16 +16,24 @@ export function GestureCamera({
   onRecalibrate,
 }: GestureCameraProps) {
   return (
-    <div
-      className="fixed bottom-6 right-6 z-50 w-[220px] overflow-hidden rounded-xl border border-white/10 bg-black/60 shadow-2xl backdrop-blur-md"
-      aria-label="Gesture camera preview"
-    >
-      <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2 text-xs font-medium text-zinc-300">
-        <span
-          className="gestura-pulse-dot h-2 w-2 rounded-full bg-emerald-400"
-          aria-hidden="true"
-        />
-        Gestura Active
+    <div aria-label="Live camera preview">
+      <div className="flex items-center justify-between px-5 py-3">
+        <div className="flex items-center gap-2">
+          <span
+            className="gestura-pulse-dot h-2.5 w-2.5 rounded-full bg-[#15803D]"
+            aria-hidden="true"
+          />
+          <span className="text-sm font-medium text-[#1A2230]">Camera active</span>
+        </div>
+        {onRecalibrate && (
+          <button
+            type="button"
+            onClick={onRecalibrate}
+            className="rounded-lg border border-[#E4E0DA] bg-white px-3 py-1.5 text-sm font-medium text-[#52606D] transition-colors hover:border-[#BFDBFE] hover:bg-[#DBEAFE] hover:text-[#1D4ED8]"
+          >
+            Recalibrate
+          </button>
+        )}
       </div>
       <CameraPreview
         stream={stream}
@@ -33,17 +41,6 @@ export function GestureCamera({
         extendedMask={extendedMask}
         size="compact"
       />
-      {onRecalibrate && (
-        <div className="border-t border-white/10 px-3 py-2 text-center">
-          <button
-            type="button"
-            onClick={onRecalibrate}
-            className="text-xs text-violet-400 underline-offset-2 hover:text-violet-300 hover:underline"
-          >
-            Recalibrate gestures
-          </button>
-        </div>
-      )}
     </div>
   )
 }

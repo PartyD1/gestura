@@ -1,3 +1,5 @@
+import { X } from 'lucide-react'
+
 const GUIDE_DISMISSED_KEY = 'gestura-guide-dismissed'
 
 interface GestureGuideProps {
@@ -5,11 +7,11 @@ interface GestureGuideProps {
 }
 
 const ROWS = [
-  { count: 1, pose: 'Index finger only', action: 'Volume down' },
-  { count: 2, pose: 'Index + middle', action: 'Volume up' },
-  { count: 3, pose: 'Index + middle + ring', action: 'Previous track' },
-  { count: 4, pose: 'Index + middle + ring + pinky', action: 'Next track' },
-  { count: 5, pose: 'Open hand (all five)', action: 'Play / pause' },
+  { count: 1, pose: 'Index finger only',               action: 'Volume down' },
+  { count: 2, pose: 'Index + middle',                   action: 'Volume up' },
+  { count: 3, pose: 'Index + middle + ring',            action: 'Previous track' },
+  { count: 4, pose: 'Index + middle + ring + pinky',    action: 'Next track' },
+  { count: 5, pose: 'Open hand (all five fingers)',     action: 'Play / Pause' },
 ] as const
 
 export function GestureGuide({ onDismiss }: GestureGuideProps) {
@@ -19,44 +21,65 @@ export function GestureGuide({ onDismiss }: GestureGuideProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-lg animate-[guide-pop_260ms_ease-out] rounded-2xl border border-violet-500/20 bg-zinc-900 p-8 shadow-2xl">
-        <h2 className="text-xl font-bold text-white">How to control Gestura</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Use an exact pose and hold steady until the ring fills. Between
-          commands, briefly relax or change your pose to re-arm.
-        </p>
+    <div
+      className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 p-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Gesture guide"
+    >
+      <div className="w-full max-w-lg animate-[guide-pop_260ms_ease-out] rounded-2xl border border-[#E4E0DA] bg-white shadow-xl">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-[#E4E0DA] px-6 py-5">
+          <div>
+            <h2 className="text-xl font-bold text-[#1A2230]">How to use gestures</h2>
+            <p className="mt-1 text-sm text-[#52606D]">
+              Use an exact pose, hold steady until the circle fills. Relax between commands.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleDismiss}
+            aria-label="Close gesture guide"
+            className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#E4E0DA] text-[#7B8794] transition-colors hover:bg-[#F7F5F2] hover:text-[#1A2230]"
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-        <ul className="mt-6 space-y-3">
+        {/* Gesture rows */}
+        <ul className="divide-y divide-[#E4E0DA] px-6">
           {ROWS.map(({ count, pose, action }, idx) => (
             <li
               key={count}
-              className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 opacity-0 [animation:guide-row_360ms_ease-out_forwards]"
-              style={{ animationDelay: `${120 + idx * 65}ms` }}
+              className="flex items-center gap-4 py-4 opacity-0 [animation:guide-row_360ms_ease-out_forwards]"
+              style={{ animationDelay: `${80 + idx * 50}ms` }}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600/30 text-lg font-bold text-violet-200">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#DBEAFE] text-lg font-bold text-[#1D4ED8]">
                 {count}
               </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm text-zinc-200">{action}</span>
-                <span className="text-xs text-zinc-500">{pose}</span>
+              <span className="flex-1">
+                <span className="block text-base font-semibold text-[#1A2230]">{action}</span>
+                <span className="block text-sm text-[#52606D]">{pose}</span>
               </span>
             </li>
           ))}
         </ul>
 
-        <p className="mt-5 rounded-lg border border-zinc-700/50 bg-zinc-800/40 px-4 py-2.5 text-xs text-zinc-400">
-          Keep your palm toward the camera. A raised thumb or extra fingers break
-          the pose — only the exact combination shown above will trigger.
-        </p>
+        {/* Tip */}
+        <div className="mx-6 mb-4 rounded-lg border border-[#E4E0DA] bg-[#F7F5F2] px-4 py-3 text-sm text-[#52606D]">
+          Keep your palm toward the camera. Thumb up or extra fingers break the pose — only the exact combination shown will trigger.
+        </div>
 
-        <button
-          type="button"
-          onClick={handleDismiss}
-          className="mt-8 w-full rounded-xl bg-violet-600 py-3 text-sm font-semibold text-white hover:bg-violet-500"
-        >
-          Got it
-        </button>
+        {/* Dismiss */}
+        <div className="border-t border-[#E4E0DA] px-6 py-4">
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="w-full rounded-xl bg-[#1D4ED8] py-4 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#1E40AF]"
+          >
+            Got it
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -2,9 +2,35 @@
 
 @theme {
   --font-sans: 'DM Sans', system-ui, sans-serif;
-  --color-gestura-bg: #0f0f1a;
-  --color-gestura-accent: #7c3aed;
-  --color-gestura-accent-muted: #5b21b6;
+
+  /* Warm light background + surfaces */
+  --color-surface-bg:     #F7F5F2;
+  --color-surface-card:   #FFFFFF;
+  --color-surface-subtle: #F0EDE8;
+  --color-border:         #E4E0DA;
+  --color-border-strong:  #C9C3BA;
+
+  /* Text */
+  --color-text-primary:   #1A2230;
+  --color-text-secondary: #52606D;
+  --color-text-muted:     #7B8794;
+
+  /* Accessible calm blue accent — #1D4ED8 is ~7:1 on white */
+  --color-blue:           #1D4ED8;
+  --color-blue-hover:     #1E40AF;
+  --color-blue-soft:      #DBEAFE;
+  --color-blue-track:     #BFDBFE;
+
+  /* Status — all pass 4.5:1 on white */
+  --color-success:        #15803D;
+  --color-success-bg:     #F0FDF4;
+  --color-success-border: #BBF7D0;
+  --color-warning:        #B45309;
+  --color-warning-bg:     #FFFBEB;
+  --color-warning-border: #FDE68A;
+  --color-error:          #B91C1C;
+  --color-error-bg:       #FFF1F1;
+  --color-error-border:   #FCA5A5;
 }
 
 html,
@@ -16,51 +42,39 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background-color: var(--color-gestura-bg);
-  color: #f4f4f5;
-  overflow: hidden;
+  font-size: 17px;
+  background-color: var(--color-surface-bg);
+  color: var(--color-text-primary);
+  /* removed overflow:hidden so users can zoom without clipping (WCAG 1.4.10) */
 }
 
-@keyframes gestura-gradient {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+/* Global visible focus ring — applies everywhere unless overridden */
+:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
+/* ── Calm page background — no animation, no neon ───────────────────── */
 .gestura-bg {
-  background: linear-gradient(
-    135deg,
-    #0f0f1a 0%,
-    #141428 35%,
-    #1a1033 70%,
-    #0f0f1a 100%
-  );
-  background-size: 200% 200%;
-  animation: gestura-gradient 18s ease infinite;
+  background-color: var(--color-surface-bg);
+}
+
+/* ── Status indicator dot ────────────────────────────────────────────── */
+.gestura-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 @keyframes pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
 }
 
-.gestura-pulse-dot {
-  animation: pulse-dot 1.5s ease-in-out infinite;
-}
-
+/* ── Modal / guide entrance ──────────────────────────────────────────── */
 @keyframes guide-pop {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.98);
+    transform: translateY(10px) scale(0.99);
   }
   to {
     opacity: 1;
@@ -71,10 +85,22 @@ body {
 @keyframes guide-row {
   from {
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateX(-6px);
   }
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* ── Motion safety ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
