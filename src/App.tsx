@@ -4,6 +4,8 @@ import {
   fingerScores,
   getExtendedFingerMask,
   normalizeLandmarks,
+  palmFacingScore,
+  rawPalmWidth,
 } from './lib/handGeometry'
 import { CalibrationWizard } from './components/CalibrationWizard'
 import { GestureBadge } from './components/GestureBadge'
@@ -18,7 +20,7 @@ import { usePlayer } from './hooks/usePlayer'
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { landmarks, cameraError } = useMediaPipe(videoRef)
+  const { landmarks, handedness, stream, cameraError } = useMediaPipe(videoRef)
   const {
     status: calibrationStatus,
     calibration: fingerCalibration,
@@ -46,7 +48,8 @@ function App() {
     pendingGesture,
     gesture,
     gestureId,
-  } = useGestures(landmarks, fingerCalibration, gesturesEnabled)
+    rejectReason,
+  } = useGestures(landmarks, handedness, fingerCalibration, gesturesEnabled)
 
   const {
     audioRef,
@@ -72,8 +75,16 @@ function App() {
 
   useEffect(() => {
     if (!debugMode || !landmarks) return
+    const norm = normalizeLandmarks(landmarks)
     console.debug('[Gestura debug] finger scores', fingerScores(landmarks))
-  }, [landmarks, debugMode])
+    console.debug('[Gestura debug] rawPalmWidth', rawPalmWidth(landmarks).toFixed(4))
+    console.debug(
+      '[Gestura debug] palmFacingScore',
+      palmFacingScore(norm, handedness).toFixed(4),
+      'handedness',
+      handedness,
+    )
+  }, [landmarks, handedness, debugMode])
 
   useEffect(() => {
     if (calibrationStatus === 'calibrating') {
@@ -116,6 +127,18 @@ function App() {
 
   return (
     <div className="gestura-bg relative min-h-full">
+      {/* Persistent, always-mounted source video that MediaPipe reads frames
+          from. Keeping a single stable element here prevents the webcam stream
+          from being orphaned when preview components mount/unmount. */}
+      <video
+        ref={videoRef}
+        className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
+        autoPlay
+        playsInline
+        muted
+        aria-hidden="true"
+      />
+
       <header className="absolute left-0 right-0 top-0 z-10 px-6 py-5">
         <h1 className="text-lg font-bold tracking-wide text-white">
           Gestura
@@ -146,7 +169,7 @@ function App() {
           liveDetectedCount={liveDetectedCount}
           expectedCount={expectedCount}
           poseMatch={poseMatch}
-          videoRef={videoRef}
+          stream={stream}
           landmarks={landmarks}
           extendedMask={previewMask}
           onStart={startCalibration}
@@ -174,6 +197,7 @@ function App() {
         confirmProgress={confirmProgress}
         pendingGesture={pendingGesture}
         gesturesEnabled={gesturesEnabled}
+        rejectReason={rejectReason}
       />
 
       <GestureBadge gesture={gesture} gestureId={gestureId} />
@@ -195,7 +219,7 @@ function App() {
 
       {!showWizard && (
         <GestureCamera
-          videoRef={videoRef}
+          stream={stream}
           landmarks={landmarks}
           extendedMask={extendedMask}
           onRecalibrate={gesturesEnabled ? resetCalibration : undefined}

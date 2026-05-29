@@ -17,8 +17,12 @@ function smoothLandmarks(
   }))
 }
 
+export type Handedness = 'Left' | 'Right' | null
+
 export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
   const [landmarks, setLandmarks] = useState<NormalizedLandmarkList | null>(null)
+  const [handedness, setHandedness] = useState<Handedness>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
   const handsRef = useRef<InstanceType<typeof window.Hands> | null>(null)
@@ -26,6 +30,7 @@ export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
   const mirrorCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const smoothedRef = useRef<NormalizedLandmarkList | null>(null)
   const latestRef = useRef<NormalizedLandmarkList | null>(null)
+  const latestHandednessRef = useRef<Handedness>(null)
   const rafScheduledRef = useRef(false)
 
   useEffect(() => {
@@ -41,6 +46,7 @@ export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
     const flushLandmarks = () => {
       rafScheduledRef.current = false
       setLandmarks(latestRef.current)
+      setHandedness(latestHandednessRef.current)
     }
 
     const scheduleFlush = () => {
@@ -65,9 +71,13 @@ export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
       if (!detected) {
         smoothedRef.current = null
         latestRef.current = null
+        latestHandednessRef.current = null
         scheduleFlush()
         return
       }
+      const label = results.multiHandedness?.[0]?.label
+      latestHandednessRef.current =
+        label === 'Left' || label === 'Right' ? label : null
       smoothedRef.current = smoothLandmarks(smoothedRef.current, detected)
       latestRef.current = smoothedRef.current
       scheduleFlush()
@@ -101,7 +111,13 @@ export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
 
     camera
       .start()
-      .then(() => setCameraError(null))
+      .then(() => {
+        setCameraError(null)
+        // Expose the live stream so any number of preview <video> elements can
+        // display it, independent of which one MediaPipe reads frames from.
+        const src = video.srcObject
+        if (src instanceof MediaStream) setStream(src)
+      })
       .catch((err: unknown) => {
         const message =
           err instanceof Error ? err.message : 'Camera could not start'
@@ -119,9 +135,12 @@ export function useMediaPipe(videoRef: RefObject<HTMLVideoElement | null>) {
       mirrorCanvasRef.current = null
       smoothedRef.current = null
       latestRef.current = null
+      latestHandednessRef.current = null
       setLandmarks(null)
+      setHandedness(null)
+      setStream(null)
     }
   }, [videoRef])
 
-  return { landmarks, cameraError }
+  return { landmarks, handedness, stream, cameraError }
 }

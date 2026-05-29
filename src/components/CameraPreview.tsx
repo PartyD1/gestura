@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 import type { FingerName } from '../lib/calibration'
 import { LANDMARK } from '../lib/handGeometry'
 import type { NormalizedLandmarkList } from '../types/mediapipe'
@@ -12,7 +12,7 @@ const FINGER_LANDMARKS: Record<FingerName, number> = {
 }
 
 interface CameraPreviewProps {
-  videoRef: RefObject<HTMLVideoElement | null>
+  stream: MediaStream | null
   landmarks: NormalizedLandmarkList | null
   extendedMask: Record<FingerName, boolean>
   size?: 'large' | 'compact'
@@ -21,7 +21,7 @@ interface CameraPreviewProps {
 }
 
 export function CameraPreview({
-  videoRef,
+  stream,
   landmarks,
   extendedMask,
   size = 'compact',
@@ -29,18 +29,34 @@ export function CameraPreview({
   showVideo = true,
 }: CameraPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
+  // Attach the shared webcam stream to this preview's own <video> element.
   useEffect(() => {
     const video = videoRef.current
+    if (!video) return
+    if (video.srcObject !== stream) {
+      video.srcObject = stream
+    }
+    if (stream) {
+      video.play().catch(() => {
+        /* autoplay may reject until user interaction; harmless here */
+      })
+    }
+  }, [stream])
+
+  useEffect(() => {
     const canvas = canvasRef.current
-    if (!video || !canvas) return
+    if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    let frame = 0
     const draw = () => {
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
+      const video = videoRef.current
+      canvas.width = video?.videoWidth || 640
+      canvas.height = video?.videoHeight || 480
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       if (landmarks) {
@@ -62,14 +78,14 @@ export function CameraPreview({
         }
       }
 
-      requestAnimationFrame(draw)
+      frame = requestAnimationFrame(draw)
     }
 
-    const frame = requestAnimationFrame(draw)
+    frame = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(frame)
-  }, [videoRef, landmarks, extendedMask, size])
+  }, [landmarks, extendedMask, size])
 
-  const aspectClass = size === 'large' ? 'aspect-[4/3]' : 'aspect-[4/3]'
+  const aspectClass = 'aspect-[4/3]'
 
   return (
     <div className={`relative overflow-hidden bg-black ${aspectClass} ${className}`}>
@@ -82,9 +98,17 @@ export function CameraPreview({
           muted
         />
       )}
+      {/*
+        Canvas must NOT be CSS-mirrored. The video is mirrored (scaleX(-1)) but
+        the landmarks come from MediaPipe which already processed a flipped frame,
+        so landmark.x is in the mirrored coordinate space. Drawing at landmark.x
+        on an un-mirrored canvas puts the dot at the same screen position as the
+        corresponding pixel in the mirrored video. Double-mirroring the canvas
+        would flip the dots to the wrong side.
+      */}
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute inset-0 h-full w-full [transform:scaleX(-1)]"
+        className="pointer-events-none absolute inset-0 h-full w-full"
         aria-hidden="true"
       />
     </div>

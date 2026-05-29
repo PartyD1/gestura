@@ -1,4 +1,3 @@
-import type { RefObject } from 'react'
 import type { FingerName } from '../lib/calibration'
 import type { CalibrationStep } from '../hooks/useCalibration'
 import type { NormalizedLandmarkList } from '../types/mediapipe'
@@ -13,7 +12,7 @@ interface CalibrationWizardProps {
   liveDetectedCount: number
   expectedCount: 0 | 1 | 2 | 3 | 4 | 5 | null
   poseMatch: boolean
-  videoRef: RefObject<HTMLVideoElement | null>
+  stream: MediaStream | null
   landmarks: NormalizedLandmarkList | null
   extendedMask: Record<FingerName, boolean>
   onStart: () => void
@@ -28,7 +27,7 @@ export function CalibrationWizard({
   liveDetectedCount,
   expectedCount,
   poseMatch,
-  videoRef,
+  stream,
   landmarks,
   extendedMask,
   onStart,
@@ -51,7 +50,7 @@ export function CalibrationWizard({
               Camera preview — green dots = fingers detected
             </div>
             <CameraPreview
-              videoRef={videoRef}
+              stream={stream}
               landmarks={landmarks}
               extendedMask={extendedMask}
               size="large"

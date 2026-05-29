@@ -1,17 +1,16 @@
-import type { RefObject } from 'react'
 import type { FingerName } from '../lib/calibration'
 import type { NormalizedLandmarkList } from '../types/mediapipe'
 import { CameraPreview } from './CameraPreview'
 
 interface GestureCameraProps {
-  videoRef: RefObject<HTMLVideoElement | null>
+  stream: MediaStream | null
   landmarks: NormalizedLandmarkList | null
   extendedMask: Record<FingerName, boolean>
   onRecalibrate?: () => void
 }
 
 export function GestureCamera({
-  videoRef,
+  stream,
   landmarks,
   extendedMask,
   onRecalibrate,
@@ -29,7 +28,7 @@ export function GestureCamera({
         Gestura Active
       </div>
       <CameraPreview
-        videoRef={videoRef}
+        stream={stream}
         landmarks={landmarks}
         extendedMask={extendedMask}
         size="compact"
