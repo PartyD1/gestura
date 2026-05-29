@@ -107,10 +107,41 @@ export function isFingerExtended(
   calibration: FingerCalibration = DEFAULT_CALIBRATION,
 ): boolean {
   const score = getFingerExtensionScore(landmarks, finger)
-  return (
-    score > calibration.noiseFloor &&
-    score > calibration.thresholds[finger]
-  )
+  if (
+    !(score > calibration.noiseFloor && score > calibration.thresholds[finger])
+  ) {
+    return false
+  }
+
+  if (finger !== 'thumb') {
+    return true
+  }
+
+  const thumbTip = landmarks[LANDMARK.THUMB_TIP]
+  const thumbIp = landmarks[LANDMARK.THUMB_IP]
+  const indexMcp = landmarks[LANDMARK.INDEX_MCP]
+  const middleMcp = landmarks[LANDMARK.MIDDLE_MCP]
+  const ringPip = landmarks[LANDMARK.RING_PIP]
+  const pinkyPip = landmarks[LANDMARK.PINKY_PIP]
+
+  // Thumb needs to be away from the palm core; folded thumbs often
+  // still score as "extended" on chain angle alone.
+  const palmCenter = {
+    x: (indexMcp.x + middleMcp.x + ringPip.x + pinkyPip.x) / 4,
+    y: (indexMcp.y + middleMcp.y + ringPip.y + pinkyPip.y) / 4,
+    z: (indexMcp.z + middleMcp.z + ringPip.z + pinkyPip.z) / 4,
+  }
+  const tipToPalm = dist(thumbTip, palmCenter)
+  const ipToPalm = dist(thumbIp, palmCenter)
+  const thumbOpenBySpread = tipToPalm > ipToPalm + 0.12
+
+  // Secondary guard: open thumb should sit farther from index base
+  // than the thumb IP does.
+  const tipToIndexBase = dist(thumbTip, indexMcp)
+  const ipToIndexBase = dist(thumbIp, indexMcp)
+  const thumbOpenByIndexGap = tipToIndexBase > ipToIndexBase + 0.08
+
+  return thumbOpenBySpread && thumbOpenByIndexGap
 }
 
 export function getExtendedFingerMask(
