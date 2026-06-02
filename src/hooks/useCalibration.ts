@@ -16,6 +16,17 @@ import {
   getExtendedFingerMask,
   normalizeLandmarks,
 } from '../lib/handGeometry'
+
+/** Returns true only when the exact set of extended fingers matches the target count's mask. */
+function exactPoseMatch(
+  mask: Record<FingerName, boolean>,
+  expected: 0 | 1 | 2 | 3 | 4 | 5 | null,
+): boolean {
+  if (expected === null) return false
+  if (expected === 0) return FINGER_NAMES.every((f) => !mask[f])
+  const required = COUNT_FINGER_MASK[expected as 1 | 2 | 3 | 4 | 5]
+  return FINGER_NAMES.every((f) => mask[f] === required.includes(f))
+}
 import type { NormalizedLandmarkList } from '../types/mediapipe'
 
 export type CalibrationStatus =
@@ -314,7 +325,7 @@ export function useCalibration() {
 
       setLiveDetectedCount(detected)
       setLiveExtendedMask(mask)
-      setPoseMatch(expected !== null && detected === expected)
+      setPoseMatch(exactPoseMatch(mask, expected))
 
       if (currentStep === 'camera') {
         cameraHandFramesRef.current += 1
@@ -330,7 +341,7 @@ export function useCalibration() {
 
       if (expected === null) return
 
-      if (detected === expected) {
+      if (exactPoseMatch(mask, expected)) {
         matchStreakRef.current += 1
       } else {
         matchStreakRef.current = 0
@@ -338,21 +349,27 @@ export function useCalibration() {
 
       if (currentStep === 'verify') {
         const cal = builtCalibrationRef.current
+        const verifyMask = getExtendedFingerMask(norm, cal)
         const verifyCount = countExtendedFingers(norm, cal) as number
         const target = VERIFY_TARGETS[verifyIndexRef.current]
+        const verifyMatch = exactPoseMatch(verifyMask, target)
 
         setLiveDetectedCount(verifyCount)
-        setPoseMatch(verifyCount === target)
+        setPoseMatch(verifyMatch)
 
-        if (verifyCount === target) {
+        if (verifyMatch) {
           verifyStreakRef.current += 1
         } else {
           verifyStreakRef.current = 0
         }
 
+        // Update the progress bar so the user can see the hold filling up.
+        setFrameProgress(Math.min(verifyStreakRef.current / VERIFY_STABLE_FRAMES, 1))
+
         if (verifyStreakRef.current >= VERIFY_STABLE_FRAMES) {
           verifyStreakRef.current = 0
           setVerifyPassed(true)
+          setFrameProgress(1)
 
           if (verifyTimeoutRef.current !== null) {
             window.clearTimeout(verifyTimeoutRef.current)
@@ -360,6 +377,7 @@ export function useCalibration() {
           verifyTimeoutRef.current = window.setTimeout(() => {
             verifyTimeoutRef.current = null
             setVerifyPassed(false)
+            setFrameProgress(0) // reset bar for the next verify target
             if (verifyIndexRef.current + 1 >= VERIFY_TARGETS.length) {
               finishCalibration()
             } else {
@@ -370,7 +388,7 @@ export function useCalibration() {
               })
               matchStreakRef.current = 0
             }
-          }, 400)
+          }, 700) // slightly longer so user sees the filled bar before it resets
         }
         return
       }

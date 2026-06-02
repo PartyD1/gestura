@@ -91,8 +91,10 @@ export function CameraPreview({
     return () => cancelAnimationFrame(frame)
   }, [landmarks, extendedMask, size])
 
+  const aspectClass = size === 'large' ? 'aspect-[4/3]' : 'aspect-video'
+
   return (
-    <div className={`relative overflow-hidden bg-[#F7F5F2] aspect-[4/3] ${className}`}>
+    <div className={`relative overflow-hidden bg-[#F7F5F2] ${aspectClass} ${className}`}>
       {showVideo && (
         <video
           ref={videoRef}

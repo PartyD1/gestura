@@ -3,6 +3,7 @@ import type { FingerName } from '../lib/calibration'
 import type { CalibrationStep } from '../hooks/useCalibration'
 import type { NormalizedLandmarkList } from '../types/mediapipe'
 import { CameraPreview } from './CameraPreview'
+import { HandSprite } from './HandSprite'
 
 interface CalibrationWizardProps {
   step: CalibrationStep
@@ -108,13 +109,19 @@ export function CalibrationWizard({
               }`}
               role="status"
             >
-              <div className="flex items-baseline justify-between gap-4">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-[#7B8794]">Detected</p>
                   <p className={`text-4xl font-bold tabular-nums ${poseMatch ? 'text-[#15803D]' : 'text-[#B45309]'}`}>
                     {liveDetectedCount}
                   </p>
                 </div>
+                {expectedCount !== null && expectedCount >= 1 && expectedCount <= 5 && (
+                  <div className="flex flex-col items-center gap-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[#7B8794]">Target pose</p>
+                    <HandSprite count={expectedCount as 1 | 2 | 3 | 4 | 5} size={64} />
+                  </div>
+                )}
                 <div className="text-right">
                   <p className="text-xs font-medium uppercase tracking-wide text-[#7B8794]">Target</p>
                   <p className="text-4xl font-bold tabular-nums text-[#1A2230]">
@@ -129,7 +136,7 @@ export function CalibrationWizard({
                 <span>
                   {poseMatch
                     ? 'Pose matched — hold steady while the bar fills.'
-                    : `Showing ${liveDetectedCount} finger${liveDetectedCount !== 1 ? 's' : ''} — need ${expectedCount}. Adjust your hand until they match.`}
+                    : `Showing ${liveDetectedCount} finger${liveDetectedCount !== 1 ? 's' : ''} — need ${expectedCount} in the exact pose shown. Adjust your hand.`}
                 </span>
               </div>
             </div>
@@ -178,14 +185,23 @@ export function CalibrationWizard({
 
           {/* Quick reference */}
           <div className="mt-6 rounded-lg border border-[#E4E0DA] bg-[#F7F5F2] p-4">
-            <p className="text-sm font-semibold text-[#1A2230]">Gesture reference</p>
-            <ul className="mt-2 space-y-1 text-sm text-[#52606D]">
-              <li>1 finger — Volume down</li>
-              <li>2 fingers — Volume up</li>
-              <li>3 fingers — Previous track</li>
-              <li>4 fingers — Next track</li>
-              <li>5 fingers — Play / pause</li>
-            </ul>
+            <p className="mb-3 text-sm font-semibold text-[#1A2230]">Gesture reference</p>
+            <div className="grid grid-cols-5 gap-2">
+              {([
+                { count: 1, label: 'Vol\ndown'  },
+                { count: 2, label: 'Vol\nup'    },
+                { count: 3, label: 'Prev\ntrack' },
+                { count: 4, label: 'Next\ntrack' },
+                { count: 5, label: 'Play /\nPause' },
+              ] as const).map(({ count, label }) => (
+                <div key={count} className="flex flex-col items-center gap-1">
+                  <HandSprite count={count} size={40} />
+                  <span className="whitespace-pre-line text-center text-[10px] font-medium leading-tight text-[#52606D]">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { HandSprite } from './HandSprite'
 
 const GUIDE_DISMISSED_KEY = 'gestura-guide-dismissed'
 
@@ -51,12 +52,10 @@ export function GestureGuide({ onDismiss }: GestureGuideProps) {
           {ROWS.map(({ count, pose, action }, idx) => (
             <li
               key={count}
-              className="flex items-center gap-4 py-4 opacity-0 [animation:guide-row_360ms_ease-out_forwards]"
+              className="flex items-center gap-4 py-3 opacity-0 [animation:guide-row_360ms_ease-out_forwards]"
               style={{ animationDelay: `${80 + idx * 50}ms` }}
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#DBEAFE] text-lg font-bold text-[#1D4ED8]">
-                {count}
-              </span>
+              <HandSprite count={count} size={52} />
               <span className="flex-1">
                 <span className="block text-base font-semibold text-[#1A2230]">{action}</span>
                 <span className="block text-sm text-[#52606D]">{pose}</span>

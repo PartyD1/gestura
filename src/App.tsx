@@ -13,6 +13,7 @@ import { GestureBadge } from './components/GestureBadge'
 import { GestureCamera } from './components/GestureCamera'
 import { GestureGuide, shouldShowGestureGuide } from './components/GestureGuide'
 import { GestureHud } from './components/GestureHud'
+import { HandSprite } from './components/HandSprite'
 import { MusicPlayer } from './components/MusicPlayer'
 import { useCalibration } from './hooks/useCalibration'
 import { useGestures } from './hooks/useGestures'
@@ -20,11 +21,11 @@ import { useMediaPipe } from './hooks/useMediaPipe'
 import { usePlayer } from './hooks/usePlayer'
 
 const FINGER_LEGEND = [
-  { count: 1, action: 'Volume down',   pose: 'Index only' },
-  { count: 2, action: 'Volume up',     pose: 'Index + middle' },
-  { count: 3, action: 'Previous',      pose: 'Index + middle + ring' },
-  { count: 4, action: 'Next track',    pose: 'Index + middle + ring + pinky' },
-  { count: 5, action: 'Play / Pause',  pose: 'Open hand' },
+  { count: 1 as const, action: 'Vol\ndown'  },
+  { count: 2 as const, action: 'Vol\nup'    },
+  { count: 3 as const, action: 'Prev\ntrack' },
+  { count: 4 as const, action: 'Next\ntrack' },
+  { count: 5 as const, action: 'Play /\nPause' },
 ]
 
 function App() {
@@ -188,10 +189,10 @@ function App() {
           />
         </main>
 
-        {/* Right column — "Your hand" panel */}
-        <aside aria-label="Hand gesture controls">
+        {/* Right column — "Your hand" panel — sticky so it doesn't push page scroll */}
+        <aside aria-label="Hand gesture controls" className="lg:sticky lg:top-6 lg:self-start">
           <div className="rounded-2xl border border-[#E4E0DA] bg-white shadow-sm">
-            <div className="border-b border-[#E4E0DA] px-5 py-4">
+            <div className="border-b border-[#E4E0DA] px-5 py-3">
               <h2 className="text-lg font-semibold text-[#1A2230]">Your hand</h2>
               <p className="mt-0.5 text-sm text-[#52606D]">
                 {gesturesEnabled
@@ -202,7 +203,7 @@ function App() {
 
             {/* Gesture status HUD */}
             {gesturesEnabled && (
-              <div className="border-b border-[#E4E0DA] px-5 py-4">
+              <div className="border-b border-[#E4E0DA] px-5 py-3">
                 <GestureHud
                   fingerCount={fingerCount}
                   phase={phase}
@@ -226,29 +227,26 @@ function App() {
               </div>
             )}
 
-            {/* Always-visible finger legend */}
-            <div className="px-5 py-4">
-              <p className="mb-3 text-sm font-semibold text-[#1A2230]">Gesture map</p>
-              <ul className="space-y-2">
-                {FINGER_LEGEND.map(({ count, action, pose }) => (
-                  <li key={count} className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#DBEAFE] text-sm font-bold text-[#1D4ED8]">
-                      {count}
+            {/* Gesture map — 5-column number tile grid */}
+            <div className="px-4 py-3">
+              <p className="mb-2 text-sm font-semibold text-[#1A2230]">Gesture map</p>
+              <div className="grid grid-cols-5 gap-1">
+                {FINGER_LEGEND.map(({ count, action }) => (
+                  <div key={count} className="flex flex-col items-center gap-1">
+                    <HandSprite count={count} size={48} />
+                    <span className="whitespace-pre-line text-center text-[11px] font-medium leading-tight text-[#52606D]">
+                      {action}
                     </span>
-                    <span>
-                      <span className="block text-sm font-medium text-[#1A2230]">{action}</span>
-                      <span className="block text-xs text-[#52606D]">{pose}</span>
-                    </span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
 
               {/* Guide / help button */}
               {!showWizard && (
                 <button
                   type="button"
                   onClick={() => setShowGuide(true)}
-                  className="mt-4 w-full rounded-xl border border-[#BFDBFE] bg-[#DBEAFE] px-4 py-2.5 text-sm font-semibold text-[#1D4ED8] transition-colors hover:bg-[#BFDBFE]"
+                  className="mt-3 w-full rounded-xl border border-[#BFDBFE] bg-[#DBEAFE] px-4 py-2 text-sm font-semibold text-[#1D4ED8] transition-colors hover:bg-[#BFDBFE]"
                 >
                   View full gesture guide
                 </button>
