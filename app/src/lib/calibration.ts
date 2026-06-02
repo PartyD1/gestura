@@ -5,7 +5,7 @@ export interface FingerCalibration {
   thresholds: Record<FingerName, number>
 }
 
-export const CALIBRATION_STORAGE_KEY = 'gestura-calibration-v1'
+export const CALIBRATION_STORAGE_KEY = 'gestura-calibration-v2'
 
 export const DEFAULT_CALIBRATION: FingerCalibration = {
   noiseFloor: 0.02,

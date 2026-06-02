@@ -1,9 +1,9 @@
 const SPRITE_MAP: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: '/sprites_hand/sprite_one.png',
-  2: '/sprites_hand/sprite_two.png',
-  3: '/sprites_hand/sprite_three.png',
-  4: '/sprites_hand/sprite_four.png',
-  5: '/sprites_hand/sprite_five.png',
+  1: '/assets/hand-sprites/one.png',
+  2: '/assets/hand-sprites/two.png',
+  3: '/assets/hand-sprites/three.png',
+  4: '/assets/hand-sprites/four.png',
+  5: '/assets/hand-sprites/five.png',
 }
 
 const COUNT_LABEL: Record<1 | 2 | 3 | 4 | 5, string> = {

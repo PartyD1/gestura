@@ -89,16 +89,7 @@ export function getFingerExtensionScore(
 ): number {
   const def = FINGER_DEFS[finger]
   if (def.useThumbChain) {
-    const mcp = landmarks[LANDMARK.THUMB_MCP]
-    const tip = landmarks[def.tip]
-    const pip = landmarks[def.pip]
-    const tipVec = { x: tip.x - pip.x, y: tip.y - pip.y, z: tip.z - pip.z }
-    const palmVec = { x: pip.x - mcp.x, y: pip.y - mcp.y, z: pip.z - mcp.z }
-    const palmLen = Math.hypot(palmVec.x, palmVec.y, palmVec.z) || 1e-6
-    return (
-      (tipVec.x * palmVec.x + tipVec.y * palmVec.y + tipVec.z * palmVec.z) /
-      palmLen
-    )
+    return thumbSpreadScore(landmarks)
   }
   return fingerExtensionScore(landmarks, def.tip, def.pip)
 }
@@ -127,34 +118,68 @@ export function isFingerExtended(
  * looseFactor: 1.0 = strict (use for turning ON), < 1.0 = looser (use for staying UP).
  * Lower offsets mean the thumb needs less clearance from the palm to stay "open."
  */
+function palmCenter(landmarks: NormalizedLandmarkList): NormalizedLandmark {
+  const indexMcp = landmarks[LANDMARK.INDEX_MCP]
+  const middleMcp = landmarks[LANDMARK.MIDDLE_MCP]
+  const ringMcp = landmarks[LANDMARK.RING_MCP]
+  const pinkyMcp = landmarks[LANDMARK.PINKY_MCP]
+
+  return {
+    x: (indexMcp.x + middleMcp.x + ringMcp.x + pinkyMcp.x) / 4,
+    y: (indexMcp.y + middleMcp.y + ringMcp.y + pinkyMcp.y) / 4,
+    z: (indexMcp.z + middleMcp.z + ringMcp.z + pinkyMcp.z) / 4,
+  }
+}
+
+/**
+ * Thumb extension is mostly lateral spread, not distal-joint straightness.
+ * Positive values mean the tip has moved farther from both the palm core and
+ * index base than the thumb IP joint has; folded thumbs tend to collapse one
+ * of these distances even when the thumb joints themselves look straight.
+ */
+function thumbSpreadScore(landmarks: NormalizedLandmarkList): number {
+  const thumbTip = landmarks[LANDMARK.THUMB_TIP]
+  const thumbIp = landmarks[LANDMARK.THUMB_IP]
+  const indexMcp = landmarks[LANDMARK.INDEX_MCP]
+  const center = palmCenter(landmarks)
+
+  const palmSpread = dist(thumbTip, center) - dist(thumbIp, center)
+  const indexSpread = dist(thumbTip, indexMcp) - dist(thumbIp, indexMcp)
+
+  return Math.min(palmSpread, indexSpread)
+}
+
 function thumbGeometryExtended(
   landmarks: NormalizedLandmarkList,
   looseFactor = 1,
 ): boolean {
   const thumbTip = landmarks[LANDMARK.THUMB_TIP]
   const thumbIp = landmarks[LANDMARK.THUMB_IP]
+  const thumbMcp = landmarks[LANDMARK.THUMB_MCP]
   const indexMcp = landmarks[LANDMARK.INDEX_MCP]
-  const middleMcp = landmarks[LANDMARK.MIDDLE_MCP]
-  const ringPip = landmarks[LANDMARK.RING_PIP]
-  const pinkyPip = landmarks[LANDMARK.PINKY_PIP]
 
   // Thumb needs to be away from the palm core; folded thumbs often
-  // still score as "extended" on chain angle alone.
-  const palmCenter = {
-    x: (indexMcp.x + middleMcp.x + ringPip.x + pinkyPip.x) / 4,
-    y: (indexMcp.y + middleMcp.y + ringPip.y + pinkyPip.y) / 4,
-    z: (indexMcp.z + middleMcp.z + ringPip.z + pinkyPip.z) / 4,
-  }
-  const tipToPalm = dist(thumbTip, palmCenter)
-  const ipToPalm = dist(thumbIp, palmCenter)
-  const thumbOpenBySpread = tipToPalm > ipToPalm + 0.08 * looseFactor
+  // still score as "extended" if we only look at one distance.
+  const center = palmCenter(landmarks)
+  const tipToPalm = dist(thumbTip, center)
+  const ipToPalm = dist(thumbIp, center)
+  const mcpToPalm = dist(thumbMcp, center)
+  const thumbOpenByPalmSpread = tipToPalm > ipToPalm + 0.04 * looseFactor
+  const thumbTipClearsPalm = tipToPalm > mcpToPalm + 0.02 * looseFactor
 
-  // Secondary guard: open thumb should sit farther from index base.
+  // Open thumbs should also move away from the index base, not tuck across it.
   const tipToIndexBase = dist(thumbTip, indexMcp)
   const ipToIndexBase = dist(thumbIp, indexMcp)
-  const thumbOpenByIndexGap = tipToIndexBase > ipToIndexBase + 0.05 * looseFactor
+  const mcpToIndexBase = dist(thumbMcp, indexMcp)
+  const thumbOpenByIndexSpread = tipToIndexBase > ipToIndexBase + 0.03 * looseFactor
+  const thumbTipClearsIndex = tipToIndexBase > mcpToIndexBase + 0.02 * looseFactor
 
-  return thumbOpenBySpread || thumbOpenByIndexGap
+  return (
+    thumbOpenByPalmSpread &&
+    thumbTipClearsPalm &&
+    thumbOpenByIndexSpread &&
+    thumbTipClearsIndex
+  )
 }
 
 export function getExtendedFingerMask(
