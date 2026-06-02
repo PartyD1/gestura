@@ -121,6 +121,7 @@ export function useCalibration() {
   const builtCalibrationRef = useRef<FingerCalibration>(DEFAULT_CALIBRATION)
   const matchStreakRef = useRef(0)
   const verifyStreakRef = useRef(0)
+  const verifyPauseRef = useRef(false)   // true while waiting between verify targets
   const cameraHandFramesRef = useRef(0)
   const verifyTimeoutRef = useRef<number | null>(null)
 
@@ -177,6 +178,7 @@ export function useCalibration() {
     }
     matchStreakRef.current = 0
     verifyStreakRef.current = 0
+    verifyPauseRef.current = false
     cameraHandFramesRef.current = 0
     setFrameProgress(0)
     setVerifyIndex(0)
@@ -348,6 +350,10 @@ export function useCalibration() {
       }
 
       if (currentStep === 'verify') {
+        // Skip frame processing during the brief pause between verify targets
+        // so the progress bar doesn't flicker while the success animation plays.
+        if (verifyPauseRef.current) return
+
         const cal = builtCalibrationRef.current
         const verifyMask = getExtendedFingerMask(norm, cal)
         const verifyCount = countExtendedFingers(norm, cal) as number
@@ -363,11 +369,11 @@ export function useCalibration() {
           verifyStreakRef.current = 0
         }
 
-        // Update the progress bar so the user can see the hold filling up.
         setFrameProgress(Math.min(verifyStreakRef.current / VERIFY_STABLE_FRAMES, 1))
 
         if (verifyStreakRef.current >= VERIFY_STABLE_FRAMES) {
           verifyStreakRef.current = 0
+          verifyPauseRef.current = true   // freeze bar at 100% during inter-target pause
           setVerifyPassed(true)
           setFrameProgress(1)
 
@@ -376,8 +382,9 @@ export function useCalibration() {
           }
           verifyTimeoutRef.current = window.setTimeout(() => {
             verifyTimeoutRef.current = null
+            verifyPauseRef.current = false  // resume processing for next target
             setVerifyPassed(false)
-            setFrameProgress(0) // reset bar for the next verify target
+            setFrameProgress(0)
             if (verifyIndexRef.current + 1 >= VERIFY_TARGETS.length) {
               finishCalibration()
             } else {
@@ -388,7 +395,7 @@ export function useCalibration() {
               })
               matchStreakRef.current = 0
             }
-          }, 700) // slightly longer so user sees the filled bar before it resets
+          }, 800)
         }
         return
       }
