@@ -57,6 +57,7 @@ Calibration is saved in `localStorage`. Use **Recalibrate gestures** in the came
 ### Install and run
 
 ```bash
+cd app
 npm install
 npm run dev
 ```
@@ -66,6 +67,7 @@ Open the URL shown in the terminal (usually `http://localhost:5173/`) and comple
 ### Production build
 
 ```bash
+cd app
 npm run build
 npm run preview
 ```
@@ -77,24 +79,32 @@ Add `?debug=1` to the URL to log finger extension scores in the browser console.
 ## Project structure
 
 ```
-src/
-├── App.tsx
-├── lib/
-│   ├── handGeometry.ts     # Normalized finger extension + counting
-│   ├── gestureMap.ts       # Finger count → player action
-│   └── calibration.ts      # Threshold types + localStorage
-├── hooks/
-│   ├── useMediaPipe.ts     # Mirrored input, smoothed landmarks
-│   ├── useGestures.ts      # Stability, hold-to-confirm, firing
-│   ├── useCalibration.ts   # Calibration wizard logic
-│   └── usePlayer.ts        # Audio playback
-└── components/
-    ├── GestureHud.tsx      # Large count + confirm ring
-    ├── CalibrationWizard.tsx
-    ├── GestureGuide.tsx
-    ├── GestureCamera.tsx
-    ├── GestureBadge.tsx
-    └── MusicPlayer.tsx
+app/
+├── public/
+│   └── assets/
+│       └── hand-sprites/       # Finger-count guide images
+├── src/
+│   ├── App.tsx
+│   ├── lib/
+│   │   ├── handGeometry.ts     # Normalized finger extension + counting
+│   │   ├── gestureMap.ts       # Finger count → player action
+│   │   └── calibration.ts      # Threshold types + localStorage
+│   ├── hooks/
+│   │   ├── useMediaPipe.ts     # Mirrored input, smoothed landmarks
+│   │   ├── useGestures.ts      # Stability, hold-to-confirm, firing
+│   │   ├── useCalibration.ts   # Calibration wizard logic
+│   │   └── usePlayer.ts        # Audio playback
+│   └── components/
+│       ├── GestureHud.tsx      # Large count + confirm ring
+│       ├── CalibrationWizard.tsx
+│       ├── HandSprite.tsx
+│       ├── GestureGuide.tsx
+│       ├── GestureCamera.tsx
+│       ├── GestureBadge.tsx
+│       └── MusicPlayer.tsx
+└── package.json
+docs/
+└── plan.txt
 ```
 
 ## Accessibility
