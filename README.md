@@ -100,6 +100,7 @@ app/
 │       ├── HandSprite.tsx
 │       ├── GestureGuide.tsx
 │       ├── GestureCamera.tsx
+│       ├── CameraPreview.tsx   # Shared webcam + landmark overlay
 │       ├── GestureBadge.tsx
 │       └── MusicPlayer.tsx
 └── package.json
